@@ -1,0 +1,40 @@
+# docker-compose.yml
+version: "3"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/usr/src/app
+    links:
+      - database
+    command: bash -c "diesel setup && cargo watch -x run"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: "postgres:15.3"
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - database-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$DB_NAME -U $$DB_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# cargo attempts to re-download packages, so cache them here
+volumes:
+  database-data: {}
