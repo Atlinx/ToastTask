@@ -12,7 +12,7 @@ use rocket_sync_db_pools::{database, diesel};
 
 #[get("/")]
 fn index() -> &'static str {
-    "Hello, World! This has changed!"
+    "Hello, World!"
 }
 
 #[catch(503)]
