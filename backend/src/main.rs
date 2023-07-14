@@ -4,15 +4,23 @@ extern crate rocket;
 use std::env;
 
 use dotenv::dotenv;
-use rocket::figment::{
-    map,
-    value::{Map, Value},
+use rocket::{
+    figment::{
+        map,
+        value::{Map, Value},
+    },
+    http::Status,
 };
 use rocket_sync_db_pools::{database, diesel};
 
 #[get("/")]
 fn index() -> &'static str {
     "Hello, World!"
+}
+
+#[get("/healthcheck")]
+fn healthcheck() -> Status {
+    Status::Ok
 }
 
 #[catch(503)]
@@ -38,5 +46,5 @@ fn rocket() -> _ {
     rocket::custom(figment)
         .attach(BackendDbConn::fairing())
         .register("/", catchers![service_not_available])
-        .mount("/", routes![index])
+        .mount("/", routes![index, healthcheck])
 }
