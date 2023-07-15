@@ -1,3 +1,5 @@
+![Banner](web/public/banner.png)
+
 # Toast Task 🍞
 
 Todo/task tracking webapp build in Vue with a backend in Rust using a Postgres DB.

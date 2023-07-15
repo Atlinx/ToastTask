@@ -5,7 +5,7 @@ services:
   web:
     build: ./web
     ports:
-      - "8080:8080"
+      - "8080:${WEB_PORT}"
     env_file:
       - .env
     volumes:
@@ -13,14 +13,11 @@ services:
     links:
       - backend
     command: bash -c "npm install && npm run dev -- --port 8080 --host"
-    depends_on:
-      backend:
-        condition: service_healthy
 
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8000:${BACKEND_PORT}"
     env_file:
       - .env
     volumes:
