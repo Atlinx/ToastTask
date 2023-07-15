@@ -12,12 +12,15 @@ use rocket::{
     },
     http::Status,
 };
-use rocket_sync_db_pools::{database, diesel};
+use rocket_db_pools::diesel::PgPool;
+use rocket_db_pools::Database;
 use std::env;
 
 mod auth;
 mod config;
 mod macros;
+mod models;
+mod schema;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -29,8 +32,9 @@ fn healthcheck() -> Status {
     Status::Ok
 }
 
-#[database("backend_db")]
-struct BackendDbConn(diesel::PgConnection);
+#[derive(Database)]
+#[database("backend")]
+pub struct BackendDb(PgPool);
 
 fn customize_config(figment: Figment) -> Figment {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -38,7 +42,7 @@ fn customize_config(figment: Figment) -> Figment {
         "url" => db_url.into(),
         "pool_size" => 10.into()
     };
-    figment.merge(("databases", map!["backend_db" => db]))
+    figment.merge(("databases", map!["backend" => db]))
 }
 
 #[launch]
@@ -46,7 +50,7 @@ fn rocket() -> _ {
     dotenv().ok();
 
     rocket::custom(customize_config(rocket::Config::figment()))
-        .attach(BackendDbConn::fairing())
+        .attach(BackendDb::init())
         .mount("/", routes![index, healthcheck])
         .manage(reqwest::Client::new())
         .mount_auth()

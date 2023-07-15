@@ -2,15 +2,15 @@
 
 diesel::table! {
     discord_user_login (id) {
-        id -> Int4,
-        user_id -> Nullable<Int4>,
+        id -> Uuid,
+        user_id -> Nullable<Uuid>,
         client_id -> Text,
     }
 }
 
 diesel::table! {
     labels (id) {
-        id -> Int4,
+        id -> Uuid,
         title -> Text,
         description -> Text,
         #[max_length = 7]
@@ -19,33 +19,50 @@ diesel::table! {
 }
 
 diesel::table! {
-    lists (id) {
-        id -> Int4,
-        title -> Text,
-        description -> Nullable<Text>,
-        #[max_length = 7]
-        color -> Varchar,
-        user_id -> Nullable<Int4>,
+    list_relations (child_list_id, parent_list_id) {
+        child_list_id -> Uuid,
+        parent_list_id -> Uuid,
     }
 }
 
 diesel::table! {
-    lists_hierarchy (child_list_id, parent_list_id) {
-        child_list_id -> Int4,
-        parent_list_id -> Int4,
+    lists (id) {
+        id -> Uuid,
+        title -> Text,
+        description -> Nullable<Text>,
+        #[max_length = 7]
+        color -> Varchar,
+        user_id -> Nullable<Uuid>,
+    }
+}
+
+diesel::table! {
+    sessions (id) {
+        id -> Uuid,
+        ip -> Cidr,
+        created_date -> Timestamp,
+        expire_date -> Timestamp,
+        user_id -> Nullable<Uuid>,
     }
 }
 
 diesel::table! {
     task_labels (task_id, label_id) {
-        task_id -> Int4,
-        label_id -> Int4,
+        task_id -> Uuid,
+        label_id -> Uuid,
+    }
+}
+
+diesel::table! {
+    task_relations (child_task_id, parent_task_id) {
+        child_task_id -> Uuid,
+        parent_task_id -> Uuid,
     }
 }
 
 diesel::table! {
     tasks (id) {
-        id -> Int4,
+        id -> Uuid,
         created_date -> Timestamp,
         edited_date -> Timestamp,
         due_date -> Timestamp,
@@ -57,30 +74,26 @@ diesel::table! {
 }
 
 diesel::table! {
-    tasks_hierarchy (child_task_id, parent_task_id) {
-        child_task_id -> Int4,
-        parent_task_id -> Int4,
-    }
-}
-
-diesel::table! {
     users (id) {
-        id -> Int4,
+        id -> Uuid,
+        username -> Text,
     }
 }
 
 diesel::joinable!(discord_user_login -> users (user_id));
 diesel::joinable!(lists -> users (user_id));
+diesel::joinable!(sessions -> users (user_id));
 diesel::joinable!(task_labels -> labels (label_id));
 diesel::joinable!(task_labels -> tasks (task_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     discord_user_login,
     labels,
+    list_relations,
     lists,
-    lists_hierarchy,
+    sessions,
     task_labels,
+    task_relations,
     tasks,
-    tasks_hierarchy,
     users,
 );

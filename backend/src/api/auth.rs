@@ -1,14 +1,18 @@
 use std::error::Error;
 
+use crate::{BackendDb, schema::sessions};
+
 use super::config::Config;
 use reqwest::header::AUTHORIZATION;
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
-    response::Redirect,
+    response::{Redirect, content},
     Build, Rocket, State,
 };
+use rocket_db_pools::Connection;
 use rocket_oauth2::{OAuth2, TokenResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
 
 struct Discord;
 
@@ -23,6 +27,18 @@ struct DiscordUserResponse {
     banner: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct SessionResponse {
+    user_id: String,
+    session_id: String,
+}
+
+#[get("/login/session/<session_id>")]
+async fn session_login(session_id: &str, mut db: Connection<BackendDb>) -> Status {
+    let result = sessions::table.insert_into(table)
+    Status::Ok
+}
+
 #[get("/login/discord")]
 fn discord_login(oauth: OAuth2<Discord>, cookies: &CookieJar<'_>) -> Redirect {
     oauth.get_redirect(cookies, &["identify"]).unwrap()
@@ -34,7 +50,8 @@ async fn discord_callback(
     cookies: &CookieJar<'_>,
     reqwest_client: &State<reqwest::Client>,
     config: &State<Config>,
-) -> Result<Redirect, Status> {
+    mut db: BackendDb
+) -> Result<content::RawHtml<&'static str>, Status> {
     let result = async {
         println!("Starting request");
         let resp = reqwest_client
@@ -57,7 +74,10 @@ async fn discord_callback(
                 .same_site(SameSite::Lax)
                 .finish(),
         );
-        Ok::<_, Box<dyn Error>>(Redirect::to(config.web_url()))
+        Ok::<_, Box<dyn Error>>(
+            content::RawHtml(
+                format!(r#"<html><head><title>Authenticate</title></head><body></body><script>res = {}; window.opener.postMessage(res, "*");window.close();</script></html>"#, )
+            ))
     };
     result.await.or_else(|e| {
         eprintln!("{}: {:?}", crate::name_of!(discord_callback), e.as_ref());
@@ -71,6 +91,7 @@ pub trait MountAuth {
 
 impl MountAuth for Rocket<Build> {
     fn mount_auth(self) -> Self {
+        let memory_store: MemoryStore<>
         self.attach(OAuth2::<Discord>::fairing("discord"))
             .mount("/", routes![discord_callback, discord_login])
     }

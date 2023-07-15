@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = { version = "=0.5.0-rc.3", features = ["secrets", "json"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "c2936fcb1e4f8f4907889b54a9e4e741a565a7d7", features = ["secrets", "json"] }
 serde = { version = "1.0", features = ["derive"] }
-diesel = { version = "2.1.0", features = ["postgres"] }
+diesel-async = { version = "0.3.1", features = ["postgres"] }
+diesel = { version = "2.1.0", features = ["uuid"] }
 dotenv = "0.15.0"
 rocket_oauth2 = { git = "https://github.com/jebrosen/rocket_oauth2", branch = "next" }
 reqwest = { version = "0.11", features = ["json"] }
-
-[dependencies.rocket_sync_db_pools]
-version = "0.1.0-rc.3"
-default-features = false
-features = ["diesel_postgres_pool"]
+rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket", rev = "c2936fcb1e4f8f4907889b54a9e4e741a565a7d7", features = ["diesel_postgres"] }
+uuid = { version = "1.4.0", features = ["v4", "serde"] }
+chrono = { version = "0.4" }
+ipnet = { version = "2.8" }
