@@ -25,3 +25,19 @@ Run the command:
 ```bash
 docker-compose down -v
 ```
+
+
+## Resources
+
+- [Accessing Postgresql Database](https://www.cherryservers.com/blog/how-to-install-and-setup-postgresql-server-on-ubuntu-20-04)
+  - Logging into Postgres 
+    
+    ```bash
+    sudo -u postgres psql
+    ```
+
+  - Commands
+  - `\q` - Quit
+  - `\l` - List databases
+  - `\c {database}` - Connect to `{database}`
+  - `\dt` - Lists tables

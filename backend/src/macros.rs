@@ -13,3 +13,5 @@ macro_rules! name_of {
         stringify!($name)
     }};
 }
+
+pub use name_of;

@@ -1,19 +1,29 @@
 [package]
-name = "backend"
+name = "toask-task-backend"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "toast_task"
+path = "src/lib.rs"
 
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket", rev = "c2936fcb1e4f8f4907889b54a9e4e741a565a7d7", features = ["secrets", "json"] }
+rocket = { version = "0.5.0-rc.3", features = ["secrets", "json"] }
+rocket_db_pools = { version = "0.1.0-rc.3", features = ["sqlx_postgres"] }
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls"]}
 serde = { version = "1.0", features = ["derive"] }
-diesel-async = { version = "0.3.1", features = ["postgres"] }
-diesel = { version = "2.1.0", features = ["uuid"] }
+serde_json = "1"
 dotenv = "0.15.0"
-rocket_oauth2 = { git = "https://github.com/jebrosen/rocket_oauth2", branch = "next" }
+rocket_oauth2 = { version = "=0.5.0-rc.2"}
 reqwest = { version = "0.11", features = ["json"] }
-rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket", rev = "c2936fcb1e4f8f4907889b54a9e4e741a565a7d7", features = ["diesel_postgres"] }
 uuid = { version = "1.4.0", features = ["v4", "serde"] }
-chrono = { version = "0.4" }
+chrono = { version = "0.4", features = ["serde"] }
 ipnet = { version = "2.8" }
+argon2rs = "0.2"
+validator = "0.16"
+validator_derive = "0.16"
+
+[dev-dependencies]
+quickcheck = "0.9"
+speculate = "0.1"
+parking_lot = { version = "0.12", features = ["nightly"] }

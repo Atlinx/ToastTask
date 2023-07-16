@@ -1,61 +1,82 @@
-use rocket::http::Status;
-use rocket::request::{self, FromRequest, Request};
-use rocket::{catch, Outcome};
-
-use crate::database::DbConn;
-
+use crate::database::BackendDb;
 use crate::models::user::UserModel;
 use crate::responses::{
     bad_request, forbidden, internal_server_error, not_found, service_unavailable, unauthorized,
     APIResponse,
 };
+use rocket::http::Status;
+use rocket::outcome::{try_outcome, Outcome};
+use rocket::request::{self, FromRequest, Request};
+use rocket::{catch, Build, Rocket};
+use rocket_db_pools::Connection;
 
 #[catch(400)]
-pub fn bad_request_handler() -> APIResponse {
+fn bad_request_handler() -> APIResponse {
     bad_request()
 }
 
 #[catch(401)]
-pub fn unauthorized_handler() -> APIResponse {
+fn unauthorized_handler() -> APIResponse {
     unauthorized()
 }
 
 #[catch(403)]
-pub fn forbidden_handler() -> APIResponse {
+fn forbidden_handler() -> APIResponse {
     forbidden()
 }
 
 #[catch(404)]
-pub fn not_found_handler() -> APIResponse {
+fn not_found_handler() -> APIResponse {
     not_found()
 }
 
 #[catch(500)]
-pub fn internal_server_error_handler() -> APIResponse {
+fn internal_server_error_handler() -> APIResponse {
     internal_server_error()
 }
 
 #[catch(503)]
-pub fn service_unavailable_handler() -> APIResponse {
+fn service_unavailable_handler() -> APIResponse {
     service_unavailable()
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for UserModel {
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for UserModel {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<UserModel, ()> {
-        let db = <DbConn as FromRequest>::from_request(request)?;
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let db = try_outcome!(request
+            .guard::<Connection<BackendDb>>()
+            .await
+            .map_failure(|f| (f.0, ())));
+
         let keys: Vec<_> = request.headers().get("Authorization").collect();
         if keys.len() != 1 {
             return Outcome::Failure((Status::BadRequest, ()));
         };
 
-        let token_header = keys[0];
-        let token = token_header.replace("Bearer ", "");
+        let auth_header = keys[0];
+        let session_token = auth_header.replace("Bearer ", "");
 
-        match UserModel::get_user_from_login_token(&token, &*db) {
-            Some(user) => Outcome::Success(user),
-            None => Outcome::Failure((Status::Unauthorized, ())),
-        }
+        // TODO:
+        todo!();
+        // match UserModel::get_user_from_session(&session_token, &*db) {
+        //     Some(user) => Outcome::Success(user),
+        //     None => Outcome::Failure((Status::Unauthorized, ())),
+        // }
     }
+}
+
+pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {
+    rocket.register(
+        "/",
+        catchers![
+            bad_request_handler,
+            unauthorized_handler,
+            forbidden_handler,
+            not_found_handler,
+            internal_server_error_handler,
+            service_unavailable_handler,
+        ],
+    )
 }

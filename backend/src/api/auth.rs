@@ -1,18 +1,14 @@
-use std::error::Error;
-
-use crate::{BackendDb, schema::sessions};
-
-use super::config::Config;
+use crate::{config::AppConfig, database::BackendDb, macros::*, responses::APIResponse};
 use reqwest::header::AUTHORIZATION;
 use rocket::{
     http::{Cookie, CookieJar, SameSite, Status},
-    response::{Redirect, content},
-    Build, Rocket, State,
+    response::{content, Redirect},
+    routes, Build, Rocket, State,
 };
 use rocket_db_pools::Connection;
 use rocket_oauth2::{OAuth2, TokenResponse};
 use serde::{Deserialize, Serialize};
-use diesel::prelude::*;
+use std::error::Error;
 
 struct Discord;
 
@@ -34,9 +30,10 @@ struct SessionResponse {
 }
 
 #[get("/login/session/<session_id>")]
-async fn session_login(session_id: &str, mut db: Connection<BackendDb>) -> Status {
-    let result = sessions::table.insert_into(table)
-    Status::Ok
+async fn session_login(session_id: &str, mut db: Connection<BackendDb>) -> APIResponse {
+    // let result = sessions::table.insert_into(table);
+    // TODO LATER: FINISH THIS
+    todo!()
 }
 
 #[get("/login/discord")]
@@ -49,8 +46,8 @@ async fn discord_callback(
     token: TokenResponse<Discord>,
     cookies: &CookieJar<'_>,
     reqwest_client: &State<reqwest::Client>,
-    config: &State<Config>,
-    mut db: BackendDb
+    config: &State<AppConfig>,
+    mut db: BackendDb,
 ) -> Result<content::RawHtml<&'static str>, Status> {
     let result = async {
         println!("Starting request");
@@ -74,25 +71,20 @@ async fn discord_callback(
                 .same_site(SameSite::Lax)
                 .finish(),
         );
-        Ok::<_, Box<dyn Error>>(
-            content::RawHtml(
-                format!(r#"<html><head><title>Authenticate</title></head><body></body><script>res = {}; window.opener.postMessage(res, "*");window.close();</script></html>"#, )
-            ))
+        // TODO LATER: Make sure to return correct value
+        Ok::<_, Box<dyn Error>>(content::RawHtml(format!(
+            r#"<html><head><title>Authenticate</title></head><body></body><script>res = {}; window.opener.postMessage(res, "*");window.close();</script></html>"#,
+            10
+        )))
     };
     result.await.or_else(|e| {
-        eprintln!("{}: {:?}", crate::name_of!(discord_callback), e.as_ref());
+        eprintln!("{}: {:?}", name_of!(discord_callback), e.as_ref());
         Err(Status::InternalServerError)
     })
 }
 
-pub trait MountAuth {
-    fn mount_auth(self) -> Self;
-}
-
-impl MountAuth for Rocket<Build> {
-    fn mount_auth(self) -> Self {
-        let memory_store: MemoryStore<>
-        self.attach(OAuth2::<Discord>::fairing("discord"))
-            .mount("/", routes![discord_callback, discord_login])
-    }
+pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {
+    rocket
+        .attach(OAuth2::<Discord>::fairing("discord"))
+        .mount("/", routes![discord_callback, discord_login])
 }

@@ -1,4 +1,3 @@
-use diesel::result::Error as DieselError;
 use rocket::http::{ContentType, Status};
 use rocket::request::Request;
 use rocket::response::{Responder, Response};
@@ -6,9 +5,14 @@ use rocket::serde::json::{json, Value};
 use std::convert::From;
 use std::io::Cursor;
 
+/// Response to an API call. All
+/// responses store their data in JSON,
+/// and have a status code.
 #[derive(Debug)]
 pub struct APIResponse {
+    /// Data of the response in JSON
     data: Value,
+    /// Status of the response
     status: Status,
 }
 
@@ -26,19 +30,18 @@ impl APIResponse {
     }
 }
 
-impl From<DieselError> for APIResponse {
-    fn from(_: DieselError) -> Self {
+impl From<sqlx::Error> for APIResponse {
+    fn from(_: sqlx::Error) -> Self {
         internal_server_error()
     }
 }
 
-impl<'r, 'o> Responder<'r, 'o> for APIResponse {
-    fn respond_to(self, _req: &Request) -> Result<Response<'r>, Status> {
-        let body = self.data;
-
+impl<'r, 'o: 'r> Responder<'r, 'o> for APIResponse {
+    fn respond_to(self, request: &'r Request<'_>) -> rocket::response::Result<'o> {
+        let json_body_str = self.data.to_string();
         Response::build()
             .status(self.status)
-            .sized_body(body.len(), Cursor::new(body.to_string()))
+            .sized_body(json_body_str.len(), Cursor::new(json_body_str))
             .header(ContentType::JSON)
             .ok()
     }
