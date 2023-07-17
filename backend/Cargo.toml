@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 rocket = { version = "0.5.0-rc.3", features = ["secrets", "json"] }
 rocket_db_pools = { version = "0.1.0-rc.3", features = ["sqlx_postgres"] }
-sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls"]}
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls", "offline", "macros", "uuid", "chrono", "json"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 dotenv = "0.15.0"
@@ -20,8 +20,8 @@ uuid = { version = "1.4.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 ipnet = { version = "2.8" }
 argon2rs = "0.2"
-validator = "0.16"
-validator_derive = "0.16"
+validator = { version = "0.16", features = ["derive"] }
+rocket-validation = "0.1.3"
 
 [dev-dependencies]
 quickcheck = "0.9"

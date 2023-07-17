@@ -69,7 +69,7 @@ impl AppConfig {
     pub fn to_rocket_figment(&self) -> Figment {
         let figment = rocket::Config::figment();
         let db: Map<_, Value> = map! {
-            "url" => self.database_url.into(),
+            "url" => self.database_url.clone().into(),
             "pool_size" => self.database_pool_size.into()
         };
         figment.merge(("databases", map!["backend" => db]))
@@ -86,7 +86,7 @@ pub enum ConfigError {
 
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+        match self {
             Self::InvalidEnv(string) => write!(f, "{}", string),
         }
     }

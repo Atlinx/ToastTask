@@ -37,7 +37,25 @@ docker-compose down -v
     ```
 
   - Commands
-  - `\q` - Quit
-  - `\l` - List databases
-  - `\c {database}` - Connect to `{database}`
-  - `\dt` - Lists tables
+  
+    - `\q` - Quit
+    - `\l` - List databases
+    - `\c {database}` - Connect to `{database}`
+    - `\dt` - Lists tables
+    
+  - Configuration file is stored at
+
+    ```
+    /etc/postgresql/12/main/postgresql.conf
+    ```
+
+    > **NOTE:**
+    >
+    > Use an alternative port to `5432` on windows,
+    > because you might already have a Windows Postgres DB
+    > taking up that port.
+
+    > **NOTE:**
+    > 
+    > Add `listen_addresses = '*'` to your `postgresql.conf`
+    > file to ensure you can connect from windows

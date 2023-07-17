@@ -1,12 +1,16 @@
-use rocket_db_pools::database::Connection;
+use chrono::{DateTime, Utc};
+use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::BackendDb;
 
+#[derive(sqlx::FromRow)]
 pub struct UserModel {
     pub id: Uuid,
     pub username: String,
+    pub create_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl UserModel {

@@ -1,43 +1,22 @@
 use crate::database::BackendDb;
 use crate::models::user::UserModel;
-use crate::responses::{
-    bad_request, forbidden, internal_server_error, not_found, service_unavailable, unauthorized,
-    APIResponse,
-};
+use crate::responses::APIResponse;
 use rocket::http::Status;
 use rocket::outcome::{try_outcome, Outcome};
-use rocket::request::{self, FromRequest, Request};
+use rocket::request::{self, local_cache, FromRequest, Request};
 use rocket::{catch, Build, Rocket};
 use rocket_db_pools::Connection;
+use serde_json::json;
 
-#[catch(400)]
-fn bad_request_handler() -> APIResponse {
-    bad_request()
-}
-
-#[catch(401)]
-fn unauthorized_handler() -> APIResponse {
-    unauthorized()
-}
-
-#[catch(403)]
-fn forbidden_handler() -> APIResponse {
-    forbidden()
-}
-
-#[catch(404)]
-fn not_found_handler() -> APIResponse {
-    not_found()
-}
-
-#[catch(500)]
-fn internal_server_error_handler() -> APIResponse {
-    internal_server_error()
-}
-
-#[catch(503)]
-fn service_unavailable_handler() -> APIResponse {
-    service_unavailable()
+#[catch(default)]
+fn default_handler(status: Status, req: &Request) -> APIResponse {
+    let response: &Vec<APIResponse> = req.local_cache(|| vec![APIResponse::from(status)]);
+    println!(
+        "default handler {}, {}",
+        status.to_string(),
+        Status::ExpectationFailed.to_string()
+    );
+    response[0].clone()
 }
 
 #[rocket::async_trait]
@@ -68,15 +47,5 @@ impl<'r> FromRequest<'r> for UserModel {
 }
 
 pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {
-    rocket.register(
-        "/",
-        catchers![
-            bad_request_handler,
-            unauthorized_handler,
-            forbidden_handler,
-            not_found_handler,
-            internal_server_error_handler,
-            service_unavailable_handler,
-        ],
-    )
+    rocket.register("/", catchers![default_handler])
 }

@@ -90,7 +90,7 @@ CREATE TABLE labels (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users,
   title TEXT NOT NULL,
-  description TEXT NOT NULL,
+  description TEXT,
   color VARCHAR(7) NOT NULL,
   CONSTRAINT color_hex_constraint
     CHECK (color ~* '^#[a-f0-9]{6}$')
@@ -108,7 +108,7 @@ CREATE TABLE actions (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users,
   created_at TIMESTAMP DEFAULT current_timestamp NOT NULL,
-  type TEXT NOT NULL,
+  action_type TEXT NOT NULL,
   data JSON NOT NULL
 );
 CREATE INDEX actions_user_idx ON actions(user_id);

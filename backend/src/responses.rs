@@ -1,14 +1,17 @@
 use rocket::http::{ContentType, Status};
+use rocket::request::local_cache;
 use rocket::request::Request;
 use rocket::response::{Responder, Response};
 use rocket::serde::json::{json, Value};
 use std::convert::From;
 use std::io::Cursor;
 
+pub type RequestGuardError = (Status, Value);
+
 /// Response to an API call. All
 /// responses store their data in JSON,
 /// and have a status code.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct APIResponse {
     /// Data of the response in JSON
     data: Value,
@@ -17,6 +20,26 @@ pub struct APIResponse {
 }
 
 impl APIResponse {
+    /// Creates an API response from a status and a mesasge.
+    /// The message will be presented as
+    ///
+    /// ```json
+    /// {
+    ///   "message": "my api response message"
+    /// }
+    /// ```
+    pub fn new_message(status: Status, message: &str) -> APIResponse {
+        APIResponse {
+            data: json!({ "message": message }),
+            status,
+        }
+    }
+
+    /// Creates an API response from a status with some JSON data.
+    pub fn new(status: Status, data: Value) -> APIResponse {
+        APIResponse { data, status }
+    }
+
     /// Set the data of the `Response` to `data`.
     pub fn data(mut self, data: Value) -> APIResponse {
         self.data = data;
@@ -28,11 +51,52 @@ impl APIResponse {
         self.data = json!({ "message": message });
         self
     }
+
+    pub fn as_guard_error(&self) -> RequestGuardError {
+        (self.status, self.data.clone())
+    }
+
+    pub fn cache_guard_error(self, req: &Request) -> APIResponse {
+        req.local_cache(|| vec![self.clone()]);
+        self
+    }
+}
+
+impl From<Status> for APIResponse {
+    /// Creates an API response from a status.
+    ///
+    /// `Status::Ok`, `Status::Created`, `Status::Accepted`,
+    /// and `Status::NoContent` return a response with only
+    /// a status code.
+    ///
+    /// The remaining stuses return their status code along with
+    /// the response name as part of the body.
+    ///
+    /// Ex.
+    /// ```rust
+    /// from_status(Status::BadGateway);
+    /// ```
+    /// returns a response with the body
+    /// ```json
+    /// {
+    ///   "message": "Bad Gateway"
+    /// }
+    /// ```
+    fn from(status: Status) -> Self {
+        if status.code == Status::Ok.code
+            || status.code == Status::Created.code
+            || status.code == Status::Accepted.code
+            || status.code == Status::NoContent.code
+        {
+            return APIResponse::new(status, json!(null));
+        }
+        APIResponse::new_message(status, &status.to_string())
+    }
 }
 
 impl From<sqlx::Error> for APIResponse {
     fn from(_: sqlx::Error) -> Self {
-        internal_server_error()
+        APIResponse::from(Status::InternalServerError)
     }
 }
 
@@ -47,93 +111,8 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for APIResponse {
     }
 }
 
-pub fn ok() -> APIResponse {
-    APIResponse {
-        data: json!(null),
-        status: Status::Ok,
-    }
-}
-
-pub fn created() -> APIResponse {
-    APIResponse {
-        data: json!(null),
-        status: Status::Created,
-    }
-}
-
-pub fn accepted() -> APIResponse {
-    APIResponse {
-        data: json!(null),
-        status: Status::Accepted,
-    }
-}
-
-pub fn no_content() -> APIResponse {
-    APIResponse {
-        data: json!(null),
-        status: Status::NoContent,
-    }
-}
-
-pub fn bad_request() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Bad Request"}),
-        status: Status::BadRequest,
-    }
-}
-
-pub fn unauthorized() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Unauthorized"}),
-        status: Status::Unauthorized,
-    }
-}
-
-pub fn forbidden() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Forbidden"}),
-        status: Status::Forbidden,
-    }
-}
-
-pub fn not_found() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Not Found"}),
-        status: Status::NotFound,
-    }
-}
-
-pub fn method_not_allowed() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Method Not Allowed"}),
-        status: Status::MethodNotAllowed,
-    }
-}
-
-pub fn conflict() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Conflict"}),
-        status: Status::Conflict,
-    }
-}
-
-pub fn unprocessable_entity(errors: Value) -> APIResponse {
-    APIResponse {
-        data: json!({ "message": errors }),
-        status: Status::UnprocessableEntity,
-    }
-}
-
-pub fn internal_server_error() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Internal Server Error"}),
-        status: Status::InternalServerError,
-    }
-}
-
-pub fn service_unavailable() -> APIResponse {
-    APIResponse {
-        data: json!({"message": "Service Unavailable"}),
-        status: Status::ServiceUnavailable,
+impl From<APIResponse> for RequestGuardError {
+    fn from(value: APIResponse) -> Self {
+        value.as_guard_error()
     }
 }

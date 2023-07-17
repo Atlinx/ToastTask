@@ -480,6 +480,9 @@ name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "encoding_rs"
@@ -1772,6 +1775,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rocket-validation"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4de40e00ab6e44f7bcfa19320737a710339723e2d1b055a704223ec92ab7388"
+dependencies = [
+ "rocket",
+ "validator",
+]
+
+[[package]]
 name = "rocket_codegen"
 version = "0.5.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2188,6 +2201,7 @@ dependencies = [
  "bitflags 1.3.2",
  "byteorder",
  "bytes",
+ "chrono",
  "crc",
  "crossbeam-queue",
  "dirs",
@@ -2225,6 +2239,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
  "webpki-roots",
  "whoami",
 ]
@@ -2238,9 +2253,12 @@ dependencies = [
  "dotenvy",
  "either",
  "heck",
+ "hex",
  "once_cell",
  "proc-macro2 1.0.64",
  "quote 1.0.29",
+ "serde",
+ "serde_json",
  "sha2",
  "sqlx-core",
  "sqlx-rt",
@@ -2435,6 +2453,7 @@ dependencies = [
  "quickcheck",
  "reqwest",
  "rocket",
+ "rocket-validation",
  "rocket_db_pools",
  "rocket_oauth2",
  "serde",
@@ -2443,7 +2462,6 @@ dependencies = [
  "sqlx",
  "uuid",
  "validator",
- "validator_derive",
 ]
 
 [[package]]
@@ -2760,6 +2778,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "url",
+ "validator_derive",
 ]
 
 [[package]]
