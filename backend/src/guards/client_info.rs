@@ -1,9 +1,9 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use ipnetwork::IpNetwork;
 use reqwest::header::USER_AGENT;
 use rocket::{
-    outcome::{try_outcome, Outcome},
+    outcome::Outcome,
     request::{self, FromRequest},
     Request,
 };
@@ -27,6 +27,12 @@ impl FromStr for Platform {
             "mobile" => Ok(Platform::Mobile),
             _ => Ok(Platform::Unknown),
         }
+    }
+}
+
+impl Display for Platform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

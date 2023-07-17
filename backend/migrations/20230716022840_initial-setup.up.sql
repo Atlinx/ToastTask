@@ -45,7 +45,7 @@ CREATE TABLE email_user_logins (
   password_hash BYTEA NOT NULL
 );
 
-CREATE TABLE discord_user_login (
+CREATE TABLE discord_user_logins (
   user_id UUID PRIMARY KEY NOT NULL REFERENCES users,
   client_id TEXT UNIQUE NOT NULL
 );

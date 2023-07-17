@@ -4,10 +4,7 @@ use rocket::figment::{
     value::{Map, Value},
     Figment,
 };
-use std::{
-    env,
-    fmt::{self, Display},
-};
+use std::{env, fmt};
 
 mod dev_config;
 mod prod_config;

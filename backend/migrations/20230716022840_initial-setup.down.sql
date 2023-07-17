@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS task_relations;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS list_relations;
 DROP TABLE IF EXISTS lists;
-DROP TABLE IF EXISTS discord_user_login;
+DROP TABLE IF EXISTS discord_user_logins;
 DROP TABLE IF EXISTS email_user_logins;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS users;
