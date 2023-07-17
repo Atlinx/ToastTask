@@ -6,10 +6,12 @@ use rocket::Build;
 pub mod api;
 pub mod config;
 pub mod database;
+pub mod guards;
 pub mod handlers;
 pub mod macros;
 pub mod models;
 pub mod responses;
+pub mod utils;
 pub mod validation;
 
 /// Constructs a new Rocket instance.

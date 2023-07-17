@@ -30,15 +30,12 @@ where
         match self {
             Ok(r) => Outcome::Success(r),
             Err(e) => Outcome::Failure(match serde_json::to_value(e) {
-                Ok(error_json) => APIResponse::new(status, error_json)
-                    .cache_guard_error(req)
-                    .into(),
+                Ok(error_json) => APIResponse::new(status, error_json).as_cache_guard_error(req),
                 Err(_) => APIResponse::new_message(
                     Status::InternalServerError,
                     "Failed to validate input.",
                 )
-                .cache_guard_error(req)
-                .into(),
+                .as_cache_guard_error(req),
             }),
         }
     }

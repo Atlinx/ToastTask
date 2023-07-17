@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub environment_name: String,
     pub database_url: String,
     pub database_pool_size: u32,
+    pub password_salt: String,
+    pub session_duration: chrono::Duration,
 }
 
 impl Default for AppConfig {
@@ -39,6 +41,8 @@ impl Default for AppConfig {
             environment_name: String::from("unconfigured"),
             database_url: String::from(""),
             database_pool_size: 10,
+            password_salt: String::from("default"),
+            session_duration: chrono::Duration::seconds(10), // TODO: Replace this after testing
         }
     }
 }
@@ -56,6 +60,7 @@ impl AppConfig {
                 .expect("WEB_PORT must be a u16"),
             base_url: env::var("BASE_URL").expect("BASE_URL must be set"),
             database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+            password_salt: env::var("PASSWORD_SALT").expect("PASSWORD_SALT must be set"),
             ..Self::default()
         }
     }

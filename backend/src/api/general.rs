@@ -1,4 +1,4 @@
-use crate::{models::user::UserModel, responses::APIResponse};
+use crate::{guards::auth::Auth, models::user::UserModel, responses::APIResponse};
 use rocket::{http::Status, routes, Build, Rocket};
 use serde_json::json;
 
@@ -13,7 +13,7 @@ fn healthcheck() -> Status {
 }
 
 #[get("/whoami")]
-pub fn whoami(current_user: UserModel) -> APIResponse {
+pub fn whoami(current_user: Auth<UserModel>) -> APIResponse {
     APIResponse::new(Status::Ok, json!(current_user.username))
 }
 

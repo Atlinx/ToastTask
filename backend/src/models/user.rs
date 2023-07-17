@@ -1,23 +1,17 @@
-use chrono::{DateTime, Utc};
-use rocket_db_pools::Connection;
-use serde::{Deserialize, Serialize};
+use argon2rs::argon2i_simple;
+use chrono::NaiveDateTime;
 use uuid::Uuid;
-
-use crate::database::BackendDb;
 
 #[derive(sqlx::FromRow)]
 pub struct UserModel {
     pub id: Uuid,
     pub username: String,
-    pub create_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl UserModel {
-    pub fn get_user_from_session(session_token: &str, db_conn: &Connection<BackendDb>) {
-        // sqlx::query!("SELECT * FROM sessions WHERE")
-        // session_token
-        // TODO:
-        todo!();
+    pub fn make_password_hash(password: &str, salt: &str) -> Vec<u8> {
+        argon2i_simple(password, salt).to_vec()
     }
 }

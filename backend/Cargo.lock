@@ -1016,6 +1016,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28b29a3cd74f0f4598934efe3aeba42bae0eb4680554128851ebbecb02af14e6"
 
 [[package]]
+name = "ipnetwork"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f84f1612606f3753f205a4e9a2efd6fe5b4c573a6269b2cc6c3003d44a0d127"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "is-terminal"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2217,6 +2226,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "indexmap 1.9.3",
+ "ipnetwork",
  "itoa",
  "libc",
  "log",
@@ -2448,7 +2458,7 @@ dependencies = [
  "argon2rs",
  "chrono",
  "dotenv",
- "ipnet",
+ "ipnetwork",
  "parking_lot 0.12.1",
  "quickcheck",
  "reqwest",

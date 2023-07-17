@@ -1,3 +1,3 @@
-pub mod user_email_registeration;
-pub mod user_login;
+pub mod email_user_login;
+pub mod email_user_registeration;
 pub mod utils;

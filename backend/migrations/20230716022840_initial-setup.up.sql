@@ -32,6 +32,8 @@ SELECT manage_updated_at('users');
 CREATE TABLE sessions (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
   ip CIDR NOT NULL,
+  platform TEXT NOT NULL,
+  user_agent TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expire_at TIMESTAMP NOT NULL,
   user_id UUID NOT NULL REFERENCES users
