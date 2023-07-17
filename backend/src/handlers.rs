@@ -1,22 +1,32 @@
 use crate::database::BackendDb;
 use crate::models::user::UserModel;
-use crate::responses::APIResponse;
+use crate::responses::{APIResponse, CachedAPIResponse};
 use rocket::http::Status;
 use rocket::outcome::{try_outcome, Outcome};
-use rocket::request::{self, local_cache, FromRequest, Request};
+use rocket::request::{self, FromRequest, Request};
 use rocket::{catch, Build, Rocket};
 use rocket_db_pools::Connection;
+use rocket_validation::CachedValidationErrors;
 use serde_json::json;
 
 #[catch(default)]
 fn default_handler(status: Status, req: &Request) -> APIResponse {
-    let response: &Vec<APIResponse> = req.local_cache(|| vec![APIResponse::from(status)]);
+    let mut response = req
+        .local_cache(|| CachedAPIResponse(APIResponse::from(status)))
+        .0
+        .clone();
+    if let Some(errors) = req.local_cache(|| CachedValidationErrors(None)).0.as_ref() {
+        response = response.data(json!({
+            "message": Status::BadRequest.to_string(),
+            "errors": errors
+        }))
+    }
     println!(
         "default handler {}, {}",
         status.to_string(),
         Status::ExpectationFailed.to_string()
     );
-    response[0].clone()
+    response
 }
 
 #[rocket::async_trait]

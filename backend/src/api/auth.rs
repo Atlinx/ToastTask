@@ -38,11 +38,12 @@ struct SessionResponse {
     session_id: String,
 }
 
-#[post("/login/email", data = "<user_login>")]
+#[post("/login/email", data = "<user_login>", format = "application/json")]
 async fn email_login(
-    user_login: UserLogin,
+    user_login: Validated<Json<UserLogin>>,
     mut db: Connection<BackendDb>,
 ) -> Result<APIResponse, APIResponse> {
+    let user_login = user_login.into_deep_inner();
     let email_user_login = sqlx::query_as!(
         EmailUserLoginModel,
         "SELECT * FROM email_user_logins WHERE email = $1",
@@ -72,6 +73,7 @@ async fn email_registeration(
     user_email_registeration: Validated<Json<UserEmailRegistration>>,
     mut db: Connection<BackendDb>,
 ) -> Result<APIResponse, APIResponse> {
+    let user_email_registeration = user_email_registeration.into_deep_inner();
     Ok(APIResponse::new_message(
         Status::Ok,
         &format!("Email registration worked! {:?}", user_email_registeration),
@@ -134,17 +136,14 @@ async fn discord_callback(
 }
 
 pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {
-    rocket
-        .attach(OAuth2::<Discord>::fairing("discord"))
-        .mount(
-            "/",
-            routes![
-                discord_callback,
-                discord_login,
-                email_login,
-                session_login,
-                email_registeration
-            ],
-        )
-        .register("/", catchers![rocket_validation::validation_catcher])
+    rocket.attach(OAuth2::<Discord>::fairing("discord")).mount(
+        "/",
+        routes![
+            discord_callback,
+            discord_login,
+            email_login,
+            session_login,
+            email_registeration
+        ],
+    )
 }

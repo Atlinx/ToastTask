@@ -19,6 +19,8 @@ pub struct APIResponse {
     status: Status,
 }
 
+pub struct CachedAPIResponse(pub APIResponse);
+
 impl APIResponse {
     /// Creates an API response from a status and a mesasge.
     /// The message will be presented as
@@ -57,7 +59,7 @@ impl APIResponse {
     }
 
     pub fn cache_guard_error(self, req: &Request) -> APIResponse {
-        req.local_cache(|| vec![self.clone()]);
+        req.local_cache(|| CachedAPIResponse(self.clone()));
         self
     }
 }
