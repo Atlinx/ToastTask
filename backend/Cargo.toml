@@ -25,5 +25,3 @@ rocket-validation = "0.1.3"
 
 [dev-dependencies]
 quickcheck = "0.9"
-speculate = "0.1"
-parking_lot = { version = "0.12", features = ["nightly"] }

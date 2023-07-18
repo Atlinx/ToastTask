@@ -5,7 +5,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:${BACKEND_PORT}"
+      - "${BACKEND_PORT}:8000"
     environment:
       - TERM=xterm-256color
     env_file:
@@ -15,7 +15,9 @@ services:
       - ./backend:/usr/src/app
     links:
       - database
-    command: bash -c "cargo watch -x \"test -- --nocapture\""
+    command: bash -c "
+      sqlx migrate run && 
+      cargo watch -x \"test -- --nocapture\""
     depends_on:
       database:
         condition: service_healthy
@@ -28,21 +30,15 @@ services:
   database:
     image: "postgres:15.3"
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${INTERNAL_DB_PORT}"
     env_file:
       - .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    volumes:
-      - database-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d ${DB_NAME} -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-# cargo attempts to re-download packages, so cache them here
-volumes:
-  database-data: {}

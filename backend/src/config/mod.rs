@@ -1,8 +1,11 @@
 use chrono::Duration;
-use rocket::figment::{
-    map,
-    value::{Map, Value},
-    Figment,
+use rocket::{
+    figment::{
+        map,
+        value::{Map, Value},
+        Figment,
+    },
+    log::LogLevel,
 };
 use std::{env, fmt};
 
@@ -24,6 +27,7 @@ pub struct AppConfig {
     pub database_pool_size: u32,
     pub password_salt: String,
     pub session_duration: chrono::Duration,
+    pub log_level: LogLevel,
 }
 
 impl Default for AppConfig {
@@ -40,7 +44,8 @@ impl Default for AppConfig {
             database_url: String::from(""),
             database_pool_size: 10,
             password_salt: String::from("default"),
-            session_duration: chrono::Duration::seconds(10), // TODO: Replace this after testing
+            session_duration: chrono::Duration::seconds(10), // TODO: Replace this after testing,
+            log_level: LogLevel::Normal,
         }
     }
 }
@@ -76,6 +81,7 @@ impl AppConfig {
         };
         rocket::Config::figment()
             .merge(("port", self.backend_port))
+            .merge(("log_level", self.log_level.to_string().to_lowercase()))
             .merge(("databases", map!["backend" => db]))
     }
 }

@@ -5,7 +5,7 @@ services:
   web:
     build: ./web
     ports:
-      - "8080:${WEB_PORT}"
+      - "${WEB_PORT}:8080"
     environment:
       - TERM=xterm-256color
     env_file:
@@ -20,7 +20,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:${BACKEND_PORT}"
+      - "${BACKEND_PORT}:8000"
     environment:
       - TERM=xterm-256color
     env_file:
@@ -43,7 +43,7 @@ services:
   database:
     image: "postgres:15.3"
     ports:
-      - "5432:${DB_PORT}"
+      - "${DB_PORT}:${INTERNAL_DB_PORT}"
     env_file:
       - .env
     environment:
