@@ -76,7 +76,10 @@ impl From<Status> for APIResponse {
     ///
     /// Ex.
     /// ```rust
-    /// from_status(Status::BadGateway);
+    /// use toast_task::responses::APIResponse;
+    /// use rocket::http::Status;
+    ///
+    /// APIResponse::from(Status::BadGateway);
     /// ```
     /// returns a response with the body
     /// ```json

@@ -10,6 +10,7 @@ mod dev_config;
 mod prod_config;
 mod test_config;
 
+#[derive(Clone)]
 pub struct AppConfig {
     pub base_url: String,
     pub backend_port: u16,
@@ -69,12 +70,13 @@ impl AppConfig {
         format!("{}:{}", self.base_url, self.web_port)
     }
     pub fn to_rocket_figment(&self) -> Figment {
-        let figment = rocket::Config::figment();
         let db: Map<_, Value> = map! {
             "url" => self.database_url.clone().into(),
             "pool_size" => self.database_pool_size.into()
         };
-        figment.merge(("databases", map!["backend" => db]))
+        rocket::Config::figment()
+            .merge(("port", self.backend_port))
+            .merge(("databases", map!["backend" => db]))
     }
 }
 
