@@ -6,8 +6,11 @@ services:
     build: ./backend
     ports:
       - "8000:${BACKEND_PORT}"
+    environment:
+      - TERM=xterm-256color
     env_file:
       - .env
+    tty: true
     volumes:
       - ./backend:/usr/src/app
     links:

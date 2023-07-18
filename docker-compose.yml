@@ -6,8 +6,11 @@ services:
     build: ./web
     ports:
       - "8080:${WEB_PORT}"
+    environment:
+      - TERM=xterm-256color
     env_file:
       - .env
+    tty: true
     volumes:
       - ./web:/usr/src/app
     links:
@@ -18,8 +21,11 @@ services:
     build: ./backend
     ports:
       - "8000:${BACKEND_PORT}"
+    environment:
+      - TERM=xterm-256color
     env_file:
       - .env
+    tty: true
     volumes:
       - ./backend:/usr/src/app
     links:
@@ -37,7 +43,7 @@ services:
   database:
     image: "postgres:15.3"
     ports:
-      - "5432:5432"
+      - "5432:${DB_PORT}"
     env_file:
       - .env
     environment:
