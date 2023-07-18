@@ -20,9 +20,11 @@ echo -e "${BLUE}Run Tests ${RUN_COUNT} time(s):${ENDCOLOR}
   DATABASE_URL: ${DATABASE_URL}
 "
 
-i=$RUN_COUNT
-while [[ $i -gt 0 ]]
+i=1
+while [[ $i -le $RUN_COUNT ]]
 do 
+echo -e "${BLUE}Run #${i}:${ENDCOLOR}
+"
   cargo test
-  i=$(($i-1))
+  i=$(($i+1))
 done
