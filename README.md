@@ -44,6 +44,9 @@ Run the command:
 docker-compose down -v
 ```
 
+## SQLX
+
+Make sure you have `sqlx-cli v0.6.3` installed! The newer versions don't work since `rocket` depends on `sqlx v0.6`.
 
 ## Resources
 

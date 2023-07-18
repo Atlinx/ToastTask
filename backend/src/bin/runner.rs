@@ -1,7 +1,8 @@
 use dotenv::dotenv;
+use rocket::tokio;
 use std::env;
 
-#[rocket::main]
+#[tokio::main]
 async fn main() -> Result<(), String> {
     dotenv().ok();
 

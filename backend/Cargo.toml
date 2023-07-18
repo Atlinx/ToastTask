@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 rocket = { version = "0.5.0-rc.3", features = ["secrets", "json"] }
 rocket_db_pools = { version = "0.1.0-rc.3", features = ["sqlx_postgres"] }
-sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls", "offline", "macros", "uuid", "chrono", "json", "ipnetwork"]}
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls", "macros", "offline", "uuid", "chrono", "json", "ipnetwork"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 dotenv = "0.15.0"

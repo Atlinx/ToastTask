@@ -1,0 +1,239 @@
+{
+  "db": "PostgreSQL",
+  "0e4d53628495fc6fbbf038922ac13f6e64eee909b063a96b1083a68cc1ea6910": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "client_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM discord_user_logins WHERE client_id = $1"
+  },
+  "11c01efeda47ed431cd67cb6b96d5c396ce38fb616d25311601b640768ea9782": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO users(username) VALUES ($1) RETURNING id"
+  },
+  "1a39b3dea11b7d30ac93ac3991168610fdeda8064fb66b0f364b250f0c45516b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "email",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password_hash",
+          "ordinal": 2,
+          "type_info": "Bytea"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM email_user_logins WHERE email = $1"
+  },
+  "4bea8d3d4d772740e6fb4f6e754fac6d335c953d500a87465a3a4fb14d81fa72": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Cidr",
+          "Text",
+          "Text",
+          "Timestamp",
+          "Timestamp",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO sessions (ip, platform, user_agent, created_at, expire_at, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
+  },
+  "518aebafbbb222c4bce8bd17d9b92434be5c598ddeb6781ec95056b96f338e40": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Bytea"
+        ]
+      }
+    },
+    "query": "INSERT INTO email_user_logins(user_id, email, password_hash) VALUES ($1, $2, $3)"
+  },
+  "843923b9a0257cf80f1dff554e7dc8fdfc05f489328e8376513124dfb42996e3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM users WHERE id = $1"
+  },
+  "b61377101cd65dbd8c97702fe3a76f791c43849b84d5e16e4e3d98cbde9f7a17": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "ip",
+          "ordinal": 1,
+          "type_info": "Cidr"
+        },
+        {
+          "name": "platform",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "user_agent",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "expire_at",
+          "ordinal": 5,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 6,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM sessions WHERE id = $1"
+  },
+  "cdd77e50bd5bc6c00df2b853de6e452d77e384d1119b9210901868e32658080b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "DELETE FROM sessions WHERE user_id = $1 AND CURRENT_TIMESTAMP >= expire_at"
+  },
+  "f6b7e98004bb108dbe0058f3328e617a657814acc8d6e12c164f2ed2994684e1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO discord_user_logins(user_id, client_id) VALUES ($1, $2)"
+  }
+}
