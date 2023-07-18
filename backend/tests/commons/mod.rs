@@ -1,11 +1,6 @@
-use reqwest::header::HeaderMap;
-use rocket::{fairing::AdHoc, local::asynchronous::Client};
+use rocket::local::asynchronous::Client;
 use sqlx::postgres::PgConnectOptions;
 use toast_task::{config::get_config, create_rocket};
-
-use self::http_client::HttpClient;
-
-pub mod http_client;
 
 pub async fn create_client(pg_conn_options: PgConnectOptions) -> Client {
     let mut app_config = get_config("test").expect("Expected test config to exist.");
