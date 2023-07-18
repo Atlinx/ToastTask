@@ -1,6 +1,7 @@
-use reqwest::StatusCode;
+#![cfg(test)]
 
-mod commons;
+use crate::commons;
+use reqwest::StatusCode;
 
 #[rocket::async_test]
 async fn index() {

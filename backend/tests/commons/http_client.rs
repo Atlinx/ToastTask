@@ -20,39 +20,41 @@ impl HttpClient {
     }
 
     pub fn get(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.get(&url).headers(self.headers.clone())
+        self.add_headers(self.client.get(self.get_path(path)))
     }
 
     pub fn post(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.post(&url).headers(self.headers.clone())
+        self.add_headers(self.client.post(self.get_path(path)))
     }
 
     pub fn put(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.put(&url).headers(self.headers.clone())
+        self.add_headers(self.client.put(self.get_path(path)))
     }
 
     pub fn delete(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.delete(&url).headers(self.headers.clone())
+        self.add_headers(self.client.delete(self.get_path(path)))
     }
 
     pub fn patch(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.patch(&url).headers(self.headers.clone())
+        self.add_headers(self.client.patch(self.get_path(path)))
     }
 
     pub fn head(&self, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client.head(&url).headers(self.headers.clone())
+        self.add_headers(self.client.head(self.get_path(path)))
     }
 
     pub fn request(&self, method: Method, path: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, path);
-        self.client
-            .request(method, &url)
-            .headers(self.headers.clone())
+        self.add_headers(self.client.request(method, self.get_path(path)))
+    }
+
+    fn get_path(&self, path: &str) -> String {
+        match path.contains("://") {
+            true => path.to_owned(),
+            false => format!("{}{}", self.base_url, path),
+        }
+    }
+
+    fn add_headers(&self, builder: RequestBuilder) -> RequestBuilder {
+        builder.headers(self.headers.clone())
     }
 }

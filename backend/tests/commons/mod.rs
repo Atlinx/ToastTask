@@ -1,15 +1,21 @@
+use std::str::FromStr;
+
 use reqwest::header::HeaderMap;
 use rocket::{
     tokio::{self, net::TcpListener},
     Shutdown,
 };
-use sqlx::{migrate::MigrateDatabase, Connection, Executor, PgConnection, PgPool};
+use sqlx::{
+    migrate::MigrateDatabase,
+    postgres::{PgConnectOptions, PgPoolOptions},
+    ConnectOptions, Connection, Executor, PgConnection,
+};
 use toast_task::{config::get_config, create_rocket};
 use uuid::Uuid;
 
 use self::http_client::HttpClient;
 
-mod http_client;
+pub mod http_client;
 
 pub struct ToastTaskApp {
     db_name: String,
@@ -47,7 +53,13 @@ pub async fn setup() -> (HttpClient, ToastTaskApp) {
     sqlx::Postgres::create_database(&database_url)
         .await
         .expect("Expected database to be created");
-    let connection_pool = PgPool::connect(&database_url)
+
+    let conn_options = PgConnectOptions::from_str(&database_url)
+        .expect("Expected database_url to be valid")
+        .disable_statement_logging()
+        .clone();
+    let connection_pool = PgPoolOptions::new()
+        .connect_with(conn_options)
         .await
         .expect("Failed to connect to database");
     sqlx::migrate!("./migrations")
@@ -70,9 +82,10 @@ pub async fn setup() -> (HttpClient, ToastTaskApp) {
     };
     let _ = tokio::spawn(rocket.launch());
 
-    println!("httpclient using: {}", &app_config.backend_url());
     let http_client = HttpClient::new(&app_config.backend_url(), HeaderMap::new())
         .expect("Failed to create HttpClient");
+
+    while let Err(_) = http_client.get("/").send().await {}
 
     (http_client, app)
 }

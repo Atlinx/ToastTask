@@ -42,6 +42,12 @@ impl APIResponse {
         APIResponse { data, status }
     }
 
+    /// Set the status of the `Response` to `status`.
+    pub fn status(mut self, status: Status) -> APIResponse {
+        self.status = status;
+        self
+    }
+
     /// Set the data of the `Response` to `data`.
     pub fn data(mut self, data: Value) -> APIResponse {
         self.data = data;

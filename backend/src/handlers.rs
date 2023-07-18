@@ -12,16 +12,11 @@ fn default_handler(status: Status, req: &Request) -> APIResponse {
         .0
         .clone();
     if let Some(errors) = req.local_cache(|| CachedValidationErrors(None)).0.as_ref() {
-        response = response.data(json!({
+        response = response.status(Status::BadRequest).data(json!({
             "message": Status::BadRequest.to_string(),
             "errors": errors
         }))
     }
-    println!(
-        "default handler {}, {}",
-        status.to_string(),
-        Status::ExpectationFailed.to_string()
-    );
     response
 }
 
