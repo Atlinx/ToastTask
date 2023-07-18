@@ -14,9 +14,27 @@ Todo/task tracking webapp build in Vue with a backend in Rust using a Postgres D
 1) Make a copy of the `.env.template` file and replace items with `<angle-brackets>` with actual data.
 
 2) Run the command:
+   
     ```bash
-    docker-compose up --build
+    ./run_dev.sh
     ```
+
+# Testing
+
+Run the command:
+
+```
+./run_test.sh
+```
+
+> **NOTE:**
+> 
+> If docker gives you `error getting credentials` errors whenever
+> you build on WSL, please run:
+> 
+> ```bash
+> rm ~/.docker/config.json
+> ```
 
 ## Cleanup
 

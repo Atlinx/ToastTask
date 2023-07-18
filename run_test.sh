@@ -1,1 +1,1 @@
-docker-compose -f docker-compose.test.backend.yml up
+sudo docker-compose -f docker-compose.test.backend.yml up --build
