@@ -18,7 +18,7 @@ struct EmailLoginResponse {
 
 #[rocket::async_test]
 async fn email_register_valid() {
-    let (client, app) = commons::setup().await;
+    let client = commons::setup().await;
     let res = client
         .post("/register/email")
         .json(&json!({
@@ -30,7 +30,6 @@ async fn email_register_valid() {
         .await
         .expect("Expected response");
     assert_eq!(res.status(), StatusCode::OK);
-    app.shutdown().await;
 }
 
 macro_rules! email_register {
@@ -39,7 +38,7 @@ macro_rules! email_register {
         #[rocket::async_test]
         async fn $name() {
             let (json, status) = $input;
-            let (client, app) = commons::setup().await;
+            let client = commons::setup().await;
             let res = client
                 .post("/register/email")
                 .json(&json)
@@ -47,7 +46,6 @@ macro_rules! email_register {
                 .await
                 .expect("Expected response");
             assert_eq!(res.status(), status);
-            app.shutdown().await;
         }
     )*
     }
@@ -84,7 +82,7 @@ email_register! {
 
 #[rocket::async_test]
 async fn email_login_valid_no_user() {
-    let (client, app) = commons::setup().await;
+    let client = commons::setup().await;
     let res = client
         .post("/login/email")
         .json(&json!({
@@ -95,19 +93,17 @@ async fn email_login_valid_no_user() {
         .await
         .expect("Expected response");
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
-    app.shutdown().await;
 }
 
 #[rocket::async_test]
 async fn email_login_valid_exists_user() {
-    let (client, app) = commons::setup().await;
+    let client = commons::setup().await;
     email_register_and_login_user_default(&client).await;
-    app.shutdown().await;
 }
 
 #[rocket::async_test]
 async fn email_login_valid_exists_user_amongst_multiple_users() {
-    let (client, app) = commons::setup().await;
+    let client = commons::setup().await;
     let json_cred = json!({
         "email": "johnsmith@gmail.com",
         "password": "mypassword",
@@ -151,7 +147,6 @@ async fn email_login_valid_exists_user_amongst_multiple_users() {
     res.json::<EmailLoginResponse>()
         .await
         .expect("Expect correct JSON response");
-    app.shutdown().await;
 }
 
 macro_rules! email_login_invalid {
@@ -160,7 +155,7 @@ macro_rules! email_login_invalid {
         #[rocket::async_test]
         async fn $name() {
             let (json, status) = $input;
-            let (client, app) = commons::setup().await;
+            let client = commons::setup().await;
             let res = client
                 .post("/login/email")
                 .json(&json)
@@ -168,7 +163,6 @@ macro_rules! email_login_invalid {
                 .await
                 .expect("Expected response");
             assert_eq!(res.status(), status);
-            app.shutdown().await;
         }
     )*
     }

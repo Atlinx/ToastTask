@@ -1,14 +1,11 @@
 use std::str::FromStr;
 
 use reqwest::header::HeaderMap;
-use rocket::{
-    tokio::{self, net::TcpListener},
-    Shutdown,
-};
+use rocket::tokio::{self, net::TcpListener};
 use sqlx::{
     migrate::MigrateDatabase,
     postgres::{PgConnectOptions, PgPoolOptions},
-    ConnectOptions, Connection, Executor, PgConnection,
+    ConnectOptions,
 };
 use toast_task::{config::get_config, create_rocket};
 use uuid::Uuid;
@@ -16,28 +13,9 @@ use uuid::Uuid;
 use self::http_client::HttpClient;
 
 pub mod http_client;
+pub mod utils;
 
-pub struct ToastTaskApp {
-    db_name: String,
-    conn_url_no_db: String,
-    shutdown: Shutdown,
-}
-
-impl ToastTaskApp {
-    pub async fn shutdown(self) {
-        self.shutdown.notify();
-        let postgres_db_conn_url = format!("{}/postgres", &self.conn_url_no_db);
-        let mut connection = PgConnection::connect(&postgres_db_conn_url)
-            .await
-            .expect("Failed to connect to database");
-        connection
-            .execute(format!("DROP DATABASE \"{}\" WITH (FORCE)", self.db_name).as_str())
-            .await
-            .expect("Failed to drop database");
-    }
-}
-
-pub async fn setup() -> (HttpClient, ToastTaskApp) {
+pub async fn setup() -> HttpClient {
     let mut app_config = get_config("test").expect("Expected test config to exist");
     app_config.backend_port = get_next_available_port().await;
 
@@ -74,20 +52,13 @@ pub async fn setup() -> (HttpClient, ToastTaskApp) {
         .ignite()
         .await
         .expect("Failed to ignite rocket client");
-
-    let app = ToastTaskApp {
-        db_name: database,
-        conn_url_no_db,
-        shutdown: rocket.shutdown(),
-    };
     let _ = tokio::spawn(rocket.launch());
-
     let http_client = HttpClient::new(&app_config.backend_url(), HeaderMap::new())
         .expect("Failed to create HttpClient");
 
     while let Err(_) = http_client.get("/").send().await {}
 
-    (http_client, app)
+    http_client
 }
 
 async fn get_next_available_port() -> u16 {
