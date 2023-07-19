@@ -104,6 +104,7 @@ pub mod get {
         use assert_json_diff::assert_json_include;
         use reqwest::StatusCode;
         use serde_json::Value;
+        use uuid::Uuid;
 
         use crate::{
             api::{
@@ -118,7 +119,7 @@ pub mod get {
         #[rocket::async_test]
         async fn get_list_individual_unauth() {
             let (client, app) = commons::setup().await;
-            let (session_response, list_ids) = rud_setup(&client).await;
+            let (_, list_ids) = rud_setup(&client).await;
             let res = client
                 .get(&format!("lists/{}", list_ids.first().unwrap()))
                 .send()
@@ -147,6 +148,20 @@ pub mod get {
                 );
             }
 
+            app.shutdown().await;
+        }
+
+        #[rocket::async_test]
+        async fn get_list_individual_missing() {
+            let (client, app) = commons::setup().await;
+            let (session_response, _) = rud_setup(&client).await;
+            let res = client
+                .get(&format!("lists/{}", Uuid::new_v4()))
+                .bearer_auth(session_response.session_token)
+                .send()
+                .await
+                .expect("Expected response");
+            assert_eq!(res.status(), StatusCode::NOT_FOUND);
             app.shutdown().await;
         }
     }
@@ -252,6 +267,7 @@ pub mod put {
     use assert_json_diff::assert_json_include;
     use reqwest::StatusCode;
     use serde_json::{json, Value};
+    use uuid::Uuid;
 
     use crate::{api::list::utils::rud_setup, commons};
 
@@ -332,6 +348,73 @@ pub mod put {
         "id": "not a uid",
         "description": "This is an updated list",
       }), StatusCode::BAD_REQUEST),
+      put_list_missing: (json!({
+        "id": Uuid::new_v4(),
+      }), StatusCode::NOT_FOUND),
+    }
+}
+
+pub mod delete {
+    use reqwest::StatusCode;
+    use uuid::Uuid;
+
+    use crate::{api::list::utils::rud_setup, commons};
+
+    #[rocket::async_test]
+    async fn delete_list_unauth() {
+        let (client, app) = commons::setup().await;
+        let (_, list_ids) = rud_setup(&client).await;
+        let list_id = list_ids.first().unwrap();
+        let res = client
+            .delete(&format!("lists/{}", list_id))
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        app.shutdown().await;
+    }
+
+    #[rocket::async_test]
+    async fn delete_list_missing() {
+        let (client, app) = commons::setup().await;
+        let (_, _) = rud_setup(&client).await;
+        let invalid_list_id = Uuid::new_v4();
+        let res = client
+            .delete(&format!("lists/{}", invalid_list_id))
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        app.shutdown().await;
+    }
+
+    #[rocket::async_test]
+    async fn delete_list() {
+        let (client, app) = commons::setup().await;
+        let (session_response, list_ids) = rud_setup(&client).await;
+        let list_id = list_ids.first().unwrap();
+        let confirm_exists_res = client
+            .get(&format!("lists/{}", list_id))
+            .bearer_auth(session_response.session_token)
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(confirm_exists_res.status(), StatusCode::OK);
+        let res = client
+            .delete(&format!("lists/{}", list_id))
+            .bearer_auth(session_response.session_token)
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(res.status(), StatusCode::OK);
+        let confirm_deleted_res = client
+            .get(&format!("lists/{}", list_id))
+            .bearer_auth(session_response.session_token)
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(confirm_deleted_res.status(), StatusCode::NOT_FOUND);
+        app.shutdown().await;
     }
 }
 
