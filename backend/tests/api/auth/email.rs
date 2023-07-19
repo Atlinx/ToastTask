@@ -7,6 +7,8 @@ use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
+use self::utils::email_register_and_login_user_default;
+
 #[allow(unused)]
 #[derive(Deserialize)]
 struct EmailLoginResponse {
@@ -99,28 +101,7 @@ async fn email_login_valid_no_user() {
 #[rocket::async_test]
 async fn email_login_valid_exists_user() {
     let (client, app) = commons::setup().await;
-    let json_cred = &json!({
-        "email": "johnsmith@gmail.com",
-        "password": "mypassword",
-        "username": "johnny"
-    });
-    let res = client
-        .post("/register/email")
-        .json(&json_cred)
-        .send()
-        .await
-        .expect("Expected response");
-    assert_eq!(res.status(), StatusCode::OK);
-    let res = client
-        .post("/login/email")
-        .json(&json_cred)
-        .send()
-        .await
-        .expect("Expected response");
-    assert_eq!(res.status(), StatusCode::OK);
-    res.json::<EmailLoginResponse>()
-        .await
-        .expect("Expect correct JSON response");
+    email_register_and_login_user_default(&client).await;
     app.shutdown().await;
 }
 
@@ -214,4 +195,52 @@ email_login_invalid! {
         "password": "mypassword",
         "junk": 53
     }), StatusCode::UNAUTHORIZED),
+}
+
+pub mod utils {
+    use reqwest::StatusCode;
+    use serde::Deserialize;
+    use serde_json::json;
+    use uuid::Uuid;
+
+    use crate::commons::http_client::HttpClient;
+
+    #[derive(Deserialize)]
+    pub struct SessionResponse {
+        pub user_id: Uuid,
+        pub session_token: Uuid,
+    }
+
+    /// Registers and logs in a user, returning the session information for that user.
+    pub async fn email_register_and_login_user_default(client: &HttpClient) -> SessionResponse {
+        email_register_and_login_user(client, "johnsmith").await
+    }
+
+    /// Registers and logs in a user, returning the session information for that user.
+    pub async fn email_register_and_login_user(client: &HttpClient, name: &str) -> SessionResponse {
+        let res = client
+            .post("/register/email")
+            .json(&json!({
+                "email": format!("{}@gmail.com", name),
+                "password": "mypassword",
+                "username": name
+            }))
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(res.status(), StatusCode::OK);
+        let res = client
+            .post("/login/email")
+            .json(&json!({
+                "email": format!("{}@gmail.com", name),
+                "password": "mypassword",
+            }))
+            .send()
+            .await
+            .expect("Expected response");
+        assert_eq!(res.status(), StatusCode::OK);
+        res.json::<SessionResponse>()
+            .await
+            .expect("Expected login response json")
+    }
 }

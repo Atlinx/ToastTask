@@ -25,3 +25,5 @@ rocket-validation = "0.1.3"
 
 [dev-dependencies]
 quickcheck = "0.9"
+assert-json-diff = "2.0.2"
+once_cell = "1.18.0"

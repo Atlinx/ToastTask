@@ -124,6 +124,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "async-stream"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2415,9 +2425,11 @@ name = "toask-task-backend"
 version = "0.1.0"
 dependencies = [
  "argon2rs",
+ "assert-json-diff",
  "chrono",
  "dotenv",
  "ipnetwork",
+ "once_cell",
  "quickcheck",
  "reqwest",
  "rocket",
