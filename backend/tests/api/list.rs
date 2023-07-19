@@ -107,12 +107,7 @@ pub mod get {
         use uuid::Uuid;
 
         use crate::{
-            api::{
-                auth::email::utils::{
-                    email_register_and_login_user, email_register_and_login_user_default,
-                },
-                list::utils::{rud_setup, setup_lists_default, DEFAULT_LISTS},
-            },
+            api::list::utils::{rud_setup, DEFAULT_LISTS},
             commons,
         };
 
@@ -172,11 +167,8 @@ pub mod get {
 
         use crate::{
             api::{
-                auth::email::utils::{
-                    email_register_and_login_user, email_register_and_login_user_default,
-                    SessionResponse,
-                },
-                list::utils::{rud_setup, setup_lists_default, GetListResponse},
+                auth::email::utils::SessionResponse,
+                list::utils::{rud_setup, GetListResponse},
                 utils::GetAllResponse,
             },
             commons::{self, http_client::HttpClient},
