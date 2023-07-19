@@ -4,7 +4,9 @@
 
 Todo/task tracking webapp build in Vue with a backend in Rust using a Postgres DB.
 
-# Building
+## General
+
+### Building
 
 > **NOTE:**
 > 
@@ -19,14 +21,6 @@ Todo/task tracking webapp build in Vue with a backend in Rust using a Postgres D
     ./run_dev.sh
     ```
 
-# Testing
-
-Run the command:
-
-```
-./run_test.sh
-```
-
 > **NOTE:**
 > 
 > If docker gives you `error getting credentials` errors whenever
@@ -36,7 +30,7 @@ Run the command:
 > rm ~/.docker/config.json
 > ```
 
-## Cleanup
+### Cleanup
 
 Run the command:
 
@@ -44,9 +38,20 @@ Run the command:
 docker-compose down -v
 ```
 
-## SQLX
+## Backend
+
+### SQLX
 
 Make sure you have `sqlx-cli v0.6.3` installed! The newer versions don't work since `rocket` depends on `sqlx v0.6`.
+
+## Testing 
+
+Inside the `backend` folder, run one of the following commands:
+
+```bash
+./scripts/run_tests.sh
+./scripts/watch_tests.sh
+```
 
 ## Resources
 
