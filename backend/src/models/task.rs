@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct TaskModel {
     pub id: Uuid,
     pub list_id: Uuid,
@@ -14,7 +15,7 @@ pub struct TaskModel {
     pub description: Option<String>,
 }
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct TaskRelationModel {
     pub child_list_id: Uuid,
     pub parent_list_id: Uuid,

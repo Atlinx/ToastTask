@@ -56,7 +56,7 @@ macro_rules! test_post {
 macro_rules! test_get {
     (model_path: $model_path:expr, response_type: $response_type:ident) => {
         pub mod get {
-            pub mod get_individual {
+            pub mod single {
                 use assert_json_diff::assert_json_include;
                 use reqwest::StatusCode;
                 use uuid::Uuid;
@@ -77,7 +77,7 @@ macro_rules! test_get {
                 }
 
                 #[rocket::async_test]
-                async fn get_individual() {
+                async fn get_single() {
                     let client = commons::setup().await;
                     let (session_response, item_ids) = rud_setup(&client).await;
 
@@ -97,7 +97,7 @@ macro_rules! test_get {
                 }
 
                 #[rocket::async_test]
-                async fn get_individual_missing() {
+                async fn get_single_missing() {
                     let client = commons::setup().await;
                     let (session_response, _) = rud_setup(&client).await;
                     let res = client
@@ -110,7 +110,7 @@ macro_rules! test_get {
                 }
             }
 
-            pub mod get_all {
+            pub mod all {
                 use reqwest::StatusCode;
                 use uuid::Uuid;
 
@@ -210,7 +210,7 @@ macro_rules! test_put {
         changes: $changes:expr,
         test_cases: { $($test_case_name:ident: $test_case_input:expr,)* }
     ) => {
-        pub mod put {
+        pub mod patch {
             use assert_json_diff::assert_json_include;
             use reqwest::StatusCode;
             use serde_json::{json, Value};
@@ -222,7 +222,7 @@ macro_rules! test_put {
             async fn put_unauth() {
                 let client = commons::setup().await;
                 let _ = rud_setup(&client).await;
-                let res = client.put($model_path).send().await.expect("Expected response");
+                let res = client.patch($model_path).send().await.expect("Expected response");
                 assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
             }
 
@@ -236,7 +236,7 @@ macro_rules! test_put {
                 });
                 merge(&mut changes, &$changes);
                 let res = client
-                    .put($model_path)
+                    .patch($model_path)
                     .bearer_auth(session_response.session_token)
                     .json(&changes)
                     .send()
@@ -273,7 +273,7 @@ macro_rules! test_put {
                         let client = commons::setup().await;
                         let (session_response, _) = rud_setup(&client).await;
                         let res = client
-                            .put($model_path)
+                            .patch($model_path)
                             .json(&json)
                             .bearer_auth(session_response.session_token)
                             .send()
@@ -365,7 +365,7 @@ macro_rules! test_crud {
         get: {
             response_type: $get_response_type:ident
         },
-        put: {
+        patch: {
             changes: $put_changes:expr,
             test_cases: { $($put_test_case_name:ident: $put_test_case_input:expr,)* }
         },

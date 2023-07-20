@@ -8,7 +8,7 @@ use crate::{
     database::BackendDb,
     guards::client_info::ClientInfo,
     models::{email_user_login::EmailUserLoginModel, session::create_session, user::UserModel},
-    responses::{result_bad_request, APIResponse, MapAPIResponse},
+    responses::{bad_request, result_bad_request, APIResponse, APIResult, MapAPIResponse},
     utils::OkAsError,
     validation::{
         email_user_login::EmailUserLogin, email_user_registeration::EmailUserRegistration,
@@ -27,7 +27,7 @@ async fn email_login(
     config: &State<AppConfig>,
     mut db: Connection<BackendDb>,
     client_info: ClientInfo,
-) -> Result<APIResponse, APIResponse> {
+) -> APIResult {
     let email_user_login = email_user_login.into_deep_inner();
     let email_user_login_data = sqlx::query_as!(
         EmailUserLoginModel,
@@ -67,17 +67,20 @@ async fn email_registeration(
     email_user_registration: Validated<Json<EmailUserRegistration>>,
     config: &State<AppConfig>,
     mut db: Connection<BackendDb>,
-) -> Result<APIResponse, APIResponse> {
+) -> APIResult {
     let email_user_registration = email_user_registration.into_deep_inner();
-    sqlx::query_as!(
+    let existing_email_login = sqlx::query_as!(
         EmailUserLoginModel,
         "SELECT * FROM email_user_logins WHERE email = $1",
         email_user_registration.email
     )
-    .fetch_one(&mut *db)
+    .fetch_optional(&mut *db)
     .await
-    .ok_as_err()
-    .map_bad_request("Email is already taken.")?;
+    .map_internal_server_error("Error accessing database.")?;
+
+    if existing_email_login.is_none() {
+        return Err(bad_request("Email is already taken."));
+    }
 
     let mut trans = db.begin().await.map_err(|_| {
         APIResponse::new_message(

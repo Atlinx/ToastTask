@@ -5,7 +5,7 @@
 use crate::test_crud;
 
 test_crud! {
-    model_path: "lists",
+    model_path: "/lists",
     post: {
         valid_item: json!({
             "title": "Grocery list",
@@ -34,7 +34,7 @@ test_crud! {
     get: {
         response_type: GetListResponse
     },
-    put: {
+    patch: {
         changes: json!({
             "title": "My updated list",
             "description": "This is an updated list",
@@ -170,7 +170,7 @@ pub mod utils {
         let mut vec = Vec::<Uuid>::new();
         for req in reqs {
             let res = client
-                .post("lists")
+                .post("/lists")
                 .bearer_auth(session_response.session_token)
                 .json(&req)
                 .send()

@@ -1,6 +1,7 @@
 use chrono::{NaiveDateTime, Utc};
 use ipnetwork::IpNetwork;
 use rocket_db_pools::Connection;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     responses::{APIResponse, MapAPIResponse},
 };
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct SessionModel {
     pub id: Uuid,
     pub ip: IpNetwork,

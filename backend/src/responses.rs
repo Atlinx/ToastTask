@@ -1,3 +1,4 @@
+use paste::paste;
 use rocket::http::{ContentType, Status};
 use rocket::outcome::Outcome;
 use rocket::request::Request;
@@ -7,6 +8,7 @@ use std::convert::From;
 use std::io::Cursor;
 
 pub type RequestGuardError = (Status, Value);
+pub type APIResult = Result<APIResponse, APIResponse>;
 
 /// Response to an API call. All
 /// responses store their data in JSON,
@@ -122,27 +124,6 @@ impl From<APIResponse> for RequestGuardError {
     }
 }
 
-pub trait MapAPIResponse<R>
-where
-    Self: Sized,
-{
-    fn map_response(self, status: Status, data: Value) -> R;
-
-    fn map_response_message(self, status: Status, message: &str) -> R;
-
-    fn map_internal_server_error(self, message: &str) -> R {
-        self.map_response_message(Status::InternalServerError, message)
-    }
-
-    fn map_bad_request(self, message: &str) -> R {
-        self.map_response_message(Status::BadRequest, message)
-    }
-
-    fn map_unauthorized(self, message: &str) -> R {
-        self.map_response_message(Status::Unauthorized, message)
-    }
-}
-
 impl<T, E> MapAPIResponse<Result<T, APIResponse>> for Result<T, E> {
     fn map_response(self, status: Status, data: Value) -> Result<T, APIResponse> {
         self.map_err(|_| APIResponse::new(status, data))
@@ -150,27 +131,6 @@ impl<T, E> MapAPIResponse<Result<T, APIResponse>> for Result<T, E> {
 
     fn map_response_message(self, status: Status, message: &str) -> Result<T, APIResponse> {
         self.map_err(|_| APIResponse::new_message(status, message))
-    }
-}
-
-pub trait MapReqAPIResponse<R>
-where
-    Self: Sized,
-{
-    fn map_response(self, req: &Request<'_>, status: Status, data: Value) -> R;
-
-    fn map_response_message(self, req: &Request<'_>, status: Status, message: &str) -> R;
-
-    fn map_internal_server_error(self, req: &Request<'_>, message: &str) -> R {
-        self.map_response_message(req, Status::InternalServerError, message)
-    }
-
-    fn map_bad_request(self, req: &Request<'_>, message: &str) -> R {
-        self.map_response_message(req, Status::BadRequest, message)
-    }
-
-    fn map_unauthorized(self, req: &Request<'_>, message: &str) -> R {
-        self.map_response_message(req, Status::Unauthorized, message)
     }
 }
 
@@ -194,50 +154,74 @@ impl<S, E, F> MapReqAPIResponse<Outcome<S, RequestGuardError, F>> for Outcome<S,
     }
 }
 
-// Used as shorthands for message based API responses
-pub fn internal_server_error(message: &str) -> APIResponse {
-    APIResponse::new_message(Status::InternalServerError, message)
+macro_rules! api_response {
+    ($($response:ident($status:expr),)*) => {
+        pub trait MapAPIResponse<R>
+        where
+            Self: Sized,
+        {
+            fn map_response(self, status: Status, data: Value) -> R;
+
+            fn map_response_message(self, status: Status, message: &str) -> R;
+
+            $(
+                paste! {
+                    fn [<map_ $response>](self, message: &str) -> R {
+                        self.map_response_message($status, message)
+                    }
+                }
+            )*
+        }
+
+        pub trait MapReqAPIResponse<R>
+        where
+            Self: Sized,
+        {
+            fn map_response(self, req: &Request<'_>, status: Status, data: Value) -> R;
+
+            fn map_response_message(self, req: &Request<'_>, status: Status, message: &str) -> R;
+
+            $(
+                paste! {
+                    fn [<map_ $response>](self, req: &Request<'_>, message: &str) -> R {
+                        self.map_response_message(req, $status, message)
+                    }
+                }
+            )*
+        }
+
+        $(
+            pub fn $response(message: &str) -> APIResponse {
+                APIResponse::new_message($status, message)
+            }
+            paste!{
+                // Used within handlers to return an error for a Result<APIResponse, APIResponse>
+                pub fn [<result_ $response>](message: &str) -> Result<APIResponse, APIResponse> {
+                    Err($response(message))
+                }
+
+                // Used within request guards to return a failure for an Outcome<_, RequestGuard, _>
+                pub fn [<guard_ $response>]<S, F>(
+                    req: &Request<'_>,
+                    message: &str,
+                ) -> Outcome<S, RequestGuardError, F> {
+                    Outcome::Failure($response(message).as_cache_guard_error(req))
+                }
+            }
+        )*
+    };
 }
 
-pub fn bad_request(message: &str) -> APIResponse {
-    APIResponse::new_message(Status::BadRequest, message)
-}
-
-pub fn unauthorized(message: &str) -> APIResponse {
-    APIResponse::new_message(Status::Unauthorized, message)
-}
-
-// Used within handlers to return an error for a Result<APIResponse, APIResponse>
-pub fn result_internal_server_error(message: &str) -> Result<APIResponse, APIResponse> {
-    Err(internal_server_error(message))
-}
-
-pub fn result_bad_request(message: &str) -> Result<APIResponse, APIResponse> {
-    Err(bad_request(message))
-}
-
-pub fn result_unauthorized(message: &str) -> Result<APIResponse, APIResponse> {
-    Err(unauthorized(message))
-}
-
-// Used within request guards to return a failure for an Outcome<_, RequestGuard, _>
-pub fn guard_internal_server_error<S, F>(
-    req: &Request<'_>,
-    message: &str,
-) -> Outcome<S, RequestGuardError, F> {
-    Outcome::Failure(internal_server_error(message).as_cache_guard_error(req))
-}
-
-pub fn guard_bad_request<S, F>(
-    req: &Request<'_>,
-    message: &str,
-) -> Outcome<S, RequestGuardError, F> {
-    Outcome::Failure(bad_request(message).as_cache_guard_error(req))
-}
-
-pub fn guard_unauthorized<S, F>(
-    req: &Request<'_>,
-    message: &str,
-) -> Outcome<S, RequestGuardError, F> {
-    Outcome::Failure(unauthorized(message).as_cache_guard_error(req))
+api_response! {
+    internal_server_error(Status::InternalServerError),
+    bad_request(Status::BadRequest),
+    unauthorized(Status::Unauthorized),
+    not_found(Status::NotFound),
+    forbidden(Status::Forbidden),
+    unprocessable_entity(Status::UnprocessableEntity),
+    ok(Status::Ok),
+    created(Status::Created),
+    accepted(Status::Accepted),
+    bad_gateway(Status::BadGateway),
+    service_unavailable(Status::ServiceUnavailable),
 }

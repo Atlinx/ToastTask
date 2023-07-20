@@ -1771,6 +1771,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "ubyte",
+ "uuid",
  "version_check",
  "yansi 0.5.1",
 ]
@@ -1848,6 +1849,7 @@ dependencies = [
  "time 0.3.23",
  "tokio",
  "uncased",
+ "uuid",
 ]
 
 [[package]]
@@ -2430,6 +2432,7 @@ dependencies = [
  "dotenv",
  "ipnetwork",
  "once_cell",
+ "paste",
  "quickcheck",
  "reqwest",
  "rocket",

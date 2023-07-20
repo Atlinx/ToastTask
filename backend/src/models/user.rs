@@ -1,8 +1,9 @@
 use argon2rs::argon2i_simple;
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct UserModel {
     pub id: Uuid,
     pub username: String,

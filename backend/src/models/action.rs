@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct ActionModel {
     pub id: Uuid,
     pub user_id: Uuid,
