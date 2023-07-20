@@ -2434,6 +2434,7 @@ dependencies = [
  "once_cell",
  "paste",
  "quickcheck",
+ "regex",
  "reqwest",
  "rocket",
  "rocket-validation",

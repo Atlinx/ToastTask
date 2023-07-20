@@ -49,6 +49,22 @@ where
     }
 }
 
+impl<T> Serialize for Patch<T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Missing => serializer.serialize_none(),
+            Self::Null => serializer.serialize_none(),
+            Self::Value(value) => serializer.serialize_some(value),
+        }
+    }
+}
+
 pub trait PrintSQL {
     fn print_sql(&self) -> String;
 }

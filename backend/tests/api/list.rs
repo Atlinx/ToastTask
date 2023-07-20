@@ -42,18 +42,18 @@ test_crud! {
         }),
         test_cases: {
             invalid_0: (json!({
-            "title": "My updated list",
-            "description": "This is an updated list",
-            "color": "#444488",
+                "title": "My updated list",
+                "description": "This is an updated list",
+                "color": "#444488",
             }), StatusCode::UNPROCESSABLE_ENTITY),
-            invalid_1: (json!({}), StatusCode::UNPROCESSABLE_ENTITY),
             invalid_2: (json!({
-            "id": "not a uid",
-            "description": "This is an updated list",
+                "description": null,
             }), StatusCode::BAD_REQUEST),
-            missing: (json!({
-            "id": Uuid::new_v4(),
-            }), StatusCode::NOT_FOUND),
+            invalid_3: (json!({
+                "title": null,
+                "description": "This is an updated list",
+                "color": "#3849dfa"
+            }), StatusCode::BAD_REQUEST),
         }
     },
     delete: {}
@@ -125,7 +125,7 @@ pub mod utils {
             json!({
               "title": "Todo list",
               "description": "Dail for next week's event.",
-              "color": "#ba87783",
+              "color": "#ba8778",
             }),
             json!({
               "title": "Homework list",

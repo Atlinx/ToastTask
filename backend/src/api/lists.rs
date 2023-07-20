@@ -1,10 +1,12 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
 use rocket::{http::Status, serde::json::Json, Build, Rocket};
 use rocket_db_pools::Connection;
 use rocket_validation::Validated;
 use serde::{Deserialize, Serialize};
 use sqlx::Error::RowNotFound;
 use uuid::Uuid;
-use validator::Validate;
+use validator::{Validate, ValidationError};
 
 use crate::{
     database::BackendDb,
@@ -88,10 +90,11 @@ async fn post(
         input.title,
         input.description,
         input.color
-    ).fetch_one(&mut *db).await.map_internal_server_error("Failed to create in database.")?;
+    ).fetch_one(&mut *db).await;
+    let created = created.map_internal_server_error("Failed to create in database.")?;
     let resp = PostResponse { id: created.id };
     Ok(APIResponse::new(
-        Status::Ok,
+        Status::Created,
         serde_json::to_value(resp)
             .map_internal_server_error("Failed to convert response into json.")?,
     ))
@@ -137,13 +140,14 @@ async fn delete(auth_user: Auth<UserModel>, mut db: Connection<BackendDb>, id: U
     Ok(ok("Delete successful."))
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct PatchInput {
     #[serde(default)]
     pub title: Patch<String>,
     #[serde(default)]
     pub description: Patch<String>,
     #[serde(default)]
+    #[validate(custom = "validate_patch_color")]
     pub color: Patch<String>,
 }
 
@@ -151,7 +155,26 @@ pub struct PatchInput {
 pub struct PostInput {
     pub title: String,
     pub description: Option<String>,
+    #[validate(custom = "validate_color")]
     pub color: String,
+}
+
+fn validate_patch_color(color: &Patch<String>) -> Result<(), ValidationError> {
+    println!("Validated patch color: {:#?}", color);
+    match color {
+        Patch::Missing | Patch::Null => Ok(()),
+        Patch::Value(ref color_str) => validate_color(color_str),
+    }
+}
+
+fn validate_color(color: &str) -> Result<(), ValidationError> {
+    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^#([A-Fa-f0-9]{6})$").unwrap());
+    if REGEX.is_match(color) {
+        return Ok(());
+    }
+    Err(ValidationError::new(
+        "Color must follow the 6 digit hex format (#ffffff).",
+    ))
 }
 
 pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {

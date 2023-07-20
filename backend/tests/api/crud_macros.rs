@@ -214,29 +214,28 @@ macro_rules! test_put {
             use assert_json_diff::assert_json_include;
             use reqwest::StatusCode;
             use serde_json::{json, Value};
+            use uuid::Uuid;
 
             use super::utils::rud_setup;
-            use crate::commons::{self, utils::merge};
+            use crate::commons;
 
             #[rocket::async_test]
-            async fn put_unauth() {
+            async fn patch_unauth() {
                 let client = commons::setup().await;
-                let _ = rud_setup(&client).await;
-                let res = client.patch($model_path).send().await.expect("Expected response");
+                let (_, item_ids) = rud_setup(&client).await;
+                let item_id = item_ids.first().unwrap();
+                let res = client.patch(&format!("{}/{}", $model_path,item_id)).send().await.expect("Expected response");
                 assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
             }
 
             #[rocket::async_test]
-            async fn put_valid() {
+            async fn patch_valid() {
                 let client = commons::setup().await;
                 let (session_response, item_ids) = rud_setup(&client).await;
                 let item_id = item_ids.first().unwrap();
-                let mut changes = json!({
-                    "id": item_id,
-                });
-                merge(&mut changes, &$changes);
+                let changes = $changes;
                 let res = client
-                    .patch($model_path)
+                    .patch(&format!("{}/{}", $model_path, item_id))
                     .bearer_auth(session_response.session_token)
                     .json(&changes)
                     .send()
@@ -258,10 +257,28 @@ macro_rules! test_put {
                 );
             }
 
+            #[rocket::async_test]
+            async fn patch_missing() {
+                let client = commons::setup().await;
+                let (session_response, _) = rud_setup(&client).await;
+                let changes = json!({
+                    "title": "My updated list",
+                    "description": "This is an updated list",
+                    "color": "#444488",
+                });
+                let res = client
+                    .patch(&format!("{}/{}", $model_path, Uuid::new_v4()))
+                    .bearer_auth(session_response.session_token)
+                    .json(&changes)
+                    .send()
+                    .await
+                    .expect("Expected response");
+                assert_eq!(res.status(), StatusCode::NOT_FOUND);
+            }
+
             mod test_cases {
                 use reqwest::StatusCode;
                 use serde_json::json;
-                use uuid::Uuid;
 
                 use super::super::utils::rud_setup;
                 use crate::commons;
@@ -271,9 +288,10 @@ macro_rules! test_put {
                     async fn $test_case_name() {
                         let (json, status) = $test_case_input;
                         let client = commons::setup().await;
-                        let (session_response, _) = rud_setup(&client).await;
+                        let (session_response, item_ids) = rud_setup(&client).await;
+                        let item_id = item_ids.first().unwrap();
                         let res = client
-                            .patch($model_path)
+                            .patch(&format!("{}/{}", $model_path, item_id))
                             .json(&json)
                             .bearer_auth(session_response.session_token)
                             .send()

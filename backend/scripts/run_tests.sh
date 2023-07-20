@@ -13,7 +13,9 @@ RUN_COUNT="${1:-$DEFAULT_RUN_COUNT}"
 export $(grep -v '^#' .env | xargs)
 export DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
 
-./scripts/init_db.sh
+if ! [[ -v SKIP_INIT_DB ]]; then
+  ./scripts/init_db.sh
+fi
 
 echo ""
 echo -e "${BLUE}Run Tests ${RUN_COUNT} time(s):${ENDCOLOR}

@@ -9,7 +9,6 @@ use crate::{
     guards::client_info::ClientInfo,
     models::{email_user_login::EmailUserLoginModel, session::create_session, user::UserModel},
     responses::{bad_request, result_bad_request, APIResponse, APIResult, MapAPIResponse},
-    utils::OkAsError,
     validation::{
         email_user_login::EmailUserLogin, email_user_registeration::EmailUserRegistration,
     },
@@ -78,7 +77,7 @@ async fn email_registeration(
     .await
     .map_internal_server_error("Error accessing database.")?;
 
-    if existing_email_login.is_none() {
+    if !existing_email_login.is_none() {
         return Err(bad_request("Email is already taken."));
     }
 
