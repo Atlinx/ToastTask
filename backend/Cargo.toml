@@ -25,6 +25,7 @@ rocket-validation = "0.1.3"
 paste = "1.0"
 regex = "1.9.1"
 once_cell = "1.18.0"
+spez = "0.1.2"
 
 [dev-dependencies]
 quickcheck = "0.9"

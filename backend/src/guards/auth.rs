@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     database::BackendDb,
     models::{session::SessionModel, user::UserModel},
-    responses::{guard_bad_request, MapReqAPIResponse},
+    responses::{guard_unauthorized, MapReqAPIResponse},
     utils::ResultAsOutcome,
 };
 
@@ -39,14 +39,14 @@ impl<'r> FromRequest<'r> for Auth<UserModel> {
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let keys: Vec<_> = req.headers().get(AUTHORIZATION.as_str()).collect();
         if keys.len() != 1 {
-            return guard_bad_request(req, "Missing authorization header.");
+            return guard_unauthorized(req, "Missing authorization header.");
         }
 
         let auth_header = keys[0];
 
         let session_id: Uuid = try_outcome!(Uuid::parse_str(&auth_header.replace("Bearer ", ""))
             .as_outcome()
-            .map_bad_request(req, "Bearer session token must be valid UUID."));
+            .map_unauthorized(req, "Bearer session token must be valid UUID."));
 
         let mut db = try_outcome!(req
             .guard::<Connection<BackendDb>>()
@@ -61,7 +61,7 @@ impl<'r> FromRequest<'r> for Auth<UserModel> {
         .fetch_one(&mut *db)
         .await
         .as_outcome()
-        .map_bad_request(req, "Invalid session token."));
+        .map_unauthorized(req, "Invalid session token."));
 
         // Prune sessions
         try_outcome!(sqlx::query_as!(

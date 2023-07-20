@@ -65,18 +65,30 @@ where
     }
 }
 
-pub trait PrintSQL {
-    fn print_sql(&self) -> String;
-}
-impl PrintSQL for str {
-    fn print_sql(&self) -> String {
-        format!("'{}'", self)
-    }
-}
-impl<T: std::fmt::Display> PrintSQL for T {
-    fn print_sql(&self) -> String {
-        self.to_string()
-    }
+/// Macro to print any value in SQL.
+///
+/// This had to be a macro because rust doesn't support specialization yet,
+/// which would allow us to implement a default behaviour for all T: Display,
+/// and then implement a more specific behaviour for String.
+#[macro_export]
+macro_rules! print_sql {
+    ($e:expr) => {
+        spez::spez! {
+            for x = $e;
+            match &String -> String {
+                format!("'{}'", x)
+            }
+            match &&str -> String {
+                format!("'{}'", x)
+            }
+            match<T: std::fmt::Display> T -> String {
+                format!("{}", x)
+            }
+            match<T> T -> String {
+                String::from("NULL")
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -86,18 +98,18 @@ macro_rules! update_set {
     };
     ($table:expr; $($name:ident: $value:expr),*; $additional_sql:expr) => {
         {
-            use crate::api::utils::{Patch, PrintSQL};
+            use crate::api::utils::{Patch};
 
             let mut name_value_pairs: Vec<String> = Vec::new();
             $(
                 match &$value {
                     Patch::Missing => (),
                     Patch::Null => name_value_pairs.push(concat!( stringify!($name), "=NULL").to_owned()),
-                    Patch::Value(ref real_value) => name_value_pairs.push(format!("{}={}", stringify!($name), real_value.print_sql()))
+                    Patch::Value(ref real_value) => name_value_pairs.push(format!("{}={}", stringify!($name), crate::print_sql!(real_value)))
                 }
             )*
 
-            &format!("UPDATE {} SET {} {}", $table, name_value_pairs.join(","), $additional_sql)
+            &format!("UPDATE {} SET {} {}", $table, name_value_pairs.join(", "), $additional_sql)
         }
     }
 }

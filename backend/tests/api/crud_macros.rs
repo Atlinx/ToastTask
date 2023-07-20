@@ -44,7 +44,9 @@ macro_rules! test_post {
                             .await
                             .expect("Expected response");
                         assert_eq!(res.status(), status);
-                        res.json::<PostResponse>().await.expect("Expected correct json response");
+                        if status == StatusCode::CREATED {
+                            res.json::<PostResponse>().await.expect("Expected correct json response");
+                        }
                     }
                 )*
             }
@@ -128,7 +130,9 @@ macro_rules! test_get {
                     let client = commons::setup().await;
                     let _ = rud_setup(&client).await;
                     let res = client.get($model_path).send().await.expect("Expected response");
-                    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+                    let status = res.status();
+                    println!("Resp: {:#?}", res.json::<serde_json::Value>().await.unwrap());
+                    assert_eq!(status, StatusCode::UNAUTHORIZED);
                 }
 
                 async fn assert_get_resp_valid(
@@ -204,14 +208,13 @@ macro_rules! test_get {
 }
 
 #[macro_export]
-macro_rules! test_put {
+macro_rules! test_patch {
     (
         model_path: $model_path:expr,
-        changes: $changes:expr,
+        valid_changes: $valid_changes:expr,
         test_cases: { $($test_case_name:ident: $test_case_input:expr,)* }
     ) => {
         pub mod patch {
-            use assert_json_diff::assert_json_include;
             use reqwest::StatusCode;
             use serde_json::{json, Value};
             use uuid::Uuid;
@@ -229,75 +232,59 @@ macro_rules! test_put {
             }
 
             #[rocket::async_test]
-            async fn patch_valid() {
-                let client = commons::setup().await;
-                let (session_response, item_ids) = rud_setup(&client).await;
-                let item_id = item_ids.first().unwrap();
-                let changes = $changes;
-                let res = client
-                    .patch(&format!("{}/{}", $model_path, item_id))
-                    .bearer_auth(session_response.session_token)
-                    .json(&changes)
-                    .send()
-                    .await
-                    .expect("Expected response");
-                assert_eq!(res.status(), StatusCode::OK);
-                let refetch_item = client
-                    .get(&format!("{}/{}", $model_path, item_id))
-                    .bearer_auth(session_response.session_token)
-                    .send()
-                    .await
-                    .expect("Expected response")
-                    .json::<Value>()
-                    .await
-                    .expect("Expected json response");
-                assert_json_include!(
-                    actual: refetch_item,
-                    expected: changes
-                );
-            }
-
-            #[rocket::async_test]
             async fn patch_missing() {
                 let client = commons::setup().await;
                 let (session_response, _) = rud_setup(&client).await;
-                let changes = json!({
-                    "title": "My updated list",
-                    "description": "This is an updated list",
-                    "color": "#444488",
-                });
                 let res = client
                     .patch(&format!("{}/{}", $model_path, Uuid::new_v4()))
                     .bearer_auth(session_response.session_token)
-                    .json(&changes)
+                    .json(&$valid_changes)
                     .send()
                     .await
                     .expect("Expected response");
-                assert_eq!(res.status(), StatusCode::NOT_FOUND);
+                let status = res.status();
+                println!("got response: {:#?}", res.json::<Value>().await.unwrap());
+                assert_eq!(status, StatusCode::NOT_FOUND);
             }
 
-            mod test_cases {
+            mod test_case {
                 use reqwest::StatusCode;
-                use serde_json::json;
+                use serde_json::{json, Value};
 
+                use assert_json_diff::assert_json_include;
                 use super::super::utils::rud_setup;
                 use crate::commons;
 
                 $(
                     #[rocket::async_test]
                     async fn $test_case_name() {
-                        let (json, status) = $test_case_input;
+                        let (changes, status) = $test_case_input;
                         let client = commons::setup().await;
                         let (session_response, item_ids) = rud_setup(&client).await;
                         let item_id = item_ids.first().unwrap();
                         let res = client
                             .patch(&format!("{}/{}", $model_path, item_id))
-                            .json(&json)
+                            .json(&changes)
                             .bearer_auth(session_response.session_token)
                             .send()
                             .await
                             .expect("Expected response");
                         assert_eq!(res.status(), status);
+                        if status == StatusCode::OK {
+                            let refetch_item = client
+                                .get(&format!("{}/{}", $model_path, item_id))
+                                .bearer_auth(session_response.session_token)
+                                .send()
+                                .await
+                                .expect("Expected response")
+                                .json::<Value>()
+                                .await
+                                .expect("Expected json response");
+                            assert_json_include!(
+                                actual: refetch_item,
+                                expected: changes
+                            );
+                        }
                     }
                 )*
             }
@@ -318,10 +305,11 @@ macro_rules! test_delete {
             #[rocket::async_test]
             async fn delete_unauth() {
                 let client = commons::setup().await;
-                let (_, item_ids) = rud_setup(&client).await;
+                let (session_response, item_ids) = rud_setup(&client).await;
                 let item_id = item_ids.first().unwrap();
                 let res = client
                     .delete(&format!("{}/{}", $model_path, item_id))
+                    .bearer_auth(session_response.session_token)
                     .send()
                     .await
                     .expect("Expected response");
@@ -331,10 +319,11 @@ macro_rules! test_delete {
             #[rocket::async_test]
             async fn delete_missing() {
                 let client = commons::setup().await;
-                let (_, _) = rud_setup(&client).await;
+                let (session_response, _) = rud_setup(&client).await;
                 let invalid_item_id = Uuid::new_v4();
                 let res = client
                     .delete(&format!("{}/{}", $model_path, invalid_item_id))
+                    .bearer_auth(session_response.session_token)
                     .send()
                     .await
                     .expect("Expected response");
@@ -384,24 +373,24 @@ macro_rules! test_crud {
             response_type: $get_response_type:ident
         },
         patch: {
-            changes: $put_changes:expr,
-            test_cases: { $($put_test_case_name:ident: $put_test_case_input:expr,)* }
+            valid_changes: $patch_valid_changes:expr,
+            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
         },
         delete: {}
     ) => {
         crate::test_post!(
             model_path: $model_path,
             valid_item: $post_valid_item,
-            test_cases: {$($post_test_case_name: $post_test_case_input,)*}
+            test_cases: {$($post_test_case_name: $post_test_case_input,)* }
         );
         crate::test_get!(
             model_path: $model_path,
             response_type: $get_response_type
         );
-        crate::test_put!(
+        crate::test_patch!(
             model_path: $model_path,
-            changes: $put_changes,
-            test_cases: {$($put_test_case_name: $put_test_case_input,)*}
+            valid_changes: $patch_valid_changes,
+            test_cases: {$($patch_test_case_name: $patch_test_case_input,)*}
         );
         crate::test_delete!(model_path: $model_path);
     };

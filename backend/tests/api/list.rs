@@ -35,17 +35,22 @@ test_crud! {
         response_type: GetListResponse
     },
     patch: {
-        changes: json!({
+        valid_changes: json!({
             "title": "My updated list",
             "description": "This is an updated list",
             "color": "#444488",
         }),
         test_cases: {
-            invalid_0: (json!({
+            valid_0: (json!({
                 "title": "My updated list",
                 "description": "This is an updated list",
                 "color": "#444488",
-            }), StatusCode::UNPROCESSABLE_ENTITY),
+            }), StatusCode::OK),
+            valid_1: (json!({
+                "title": "My updated list",
+                "description": null
+            }), StatusCode::OK),
+
             invalid_2: (json!({
                 "description": null,
             }), StatusCode::BAD_REQUEST),
@@ -115,6 +120,7 @@ pub mod utils {
         color: String,
     }
 
+    // TODO: Refactor this is a return value from rud_setup
     pub static DEFAULT_ITEMS: Lazy<Vec<Value>> = Lazy::new(|| {
         vec![
             json!({

@@ -57,7 +57,7 @@ async fn get_single(
     mut db: Connection<BackendDb>,
     id: Uuid,
 ) -> APIResult {
-    let item = sqlx::query_as!(
+    let item: ListModel = sqlx::query_as!(
         ListModel,
         "SELECT * FROM lists WHERE id = $1 AND user_id = $2",
         id,
@@ -65,16 +65,18 @@ async fn get_single(
     )
     .fetch_one(&mut *db)
     .await
-    .map_err(|e| match e {
-        RowNotFound => not_found("Item not found."),
-        _ => internal_server_error("Error fetching lists"),
+    .map_err(|e| {
+        println!("got error {:#?}", e);
+        match e {
+            RowNotFound => not_found("Item not found."),
+            _ => internal_server_error("Error fetching lists"),
+        }
     })?;
-
-    Ok(APIResponse::new(
-        Status::Ok,
-        serde_json::to_value(item)
-            .map_internal_server_error("Failed to convert response into json.")?,
-    ))
+    println!("Queries item");
+    let json = serde_json::to_value(item)
+        .map_internal_server_error("Failed to convert response into json.")?;
+    println!("made response");
+    Ok(APIResponse::new(Status::Ok, json))
 }
 
 #[post("/", data = "<input>", format = "application/json")]
@@ -100,24 +102,32 @@ async fn post(
     ))
 }
 
-#[patch("/", data = "<input>", format = "application/json")]
+#[patch("/<id>", data = "<input>", format = "application/json")]
 async fn patch(
     auth_user: Auth<UserModel>,
     mut db: Connection<BackendDb>,
     input: Validated<Json<PatchInput>>,
+    id: Uuid,
 ) -> APIResult {
     let input = input.0;
-    let result = sqlx::query(update_set! {
+    let update_str = update_set! {
         "lists";
         title: input.title,
         description: input.description,
         color: input.color;
-        "WHERE user_id = $1"
-    })
-    .bind(auth_user.id)
-    .execute(&mut *db)
-    .await
-    .map_internal_server_error("Failed to patch in database.")?;
+        "WHERE id = $1 AND user_id = $2"
+    };
+    println!("got update str: {:#?}", update_str);
+    let result = sqlx::query(update_str)
+        .bind(id)
+        .bind(auth_user.id)
+        .execute(&mut *db)
+        .await
+        .map_err(|e| {
+            println!("patch got error: {:#?}", e);
+            internal_server_error("Failed to patch in database")
+        })?;
+    // .map_internal_server_error("Failed to patch in database.")?;
     if result.rows_affected() == 0 {
         return result_not_found("Item not found.");
     }
@@ -160,7 +170,6 @@ pub struct PostInput {
 }
 
 fn validate_patch_color(color: &Patch<String>) -> Result<(), ValidationError> {
-    println!("Validated patch color: {:#?}", color);
     match color {
         Patch::Missing | Patch::Null => Ok(()),
         Patch::Value(ref color_str) => validate_color(color_str),
