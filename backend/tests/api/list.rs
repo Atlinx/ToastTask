@@ -109,7 +109,7 @@ pub mod utils {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
     pub struct GetListResponse {
         id: Uuid,
-        user: Uuid,
+        user_id: Uuid,
         title: String,
         description: Option<String>,
         color: String,
