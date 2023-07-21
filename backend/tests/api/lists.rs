@@ -1,7 +1,5 @@
 #![cfg(test)]
 
-// TODO AFTER TESETING: Make a single model integration test into a macro
-
 crate::test_crud! {
     model_plural: lists,
     get: {

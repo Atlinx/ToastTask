@@ -426,6 +426,38 @@ macro_rules! test_crud {
     };
     (
         model_plural: $model_plural:ident,
+        rud_setup: $rud_setup:path,
+        get: {
+            response_type: $get_response_type:path
+        },
+        post: {
+            valid_item: $post_valid_item:expr,
+            test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
+        },
+        patch: {
+            valid_changes: $patch_valid_changes:expr,
+            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
+        },
+        default_items: { $($default_item:expr),+ }
+    ) => {
+        crate::test_crud! {
+            model_path: stringify!($model_plural),
+            rud_setup: $rud_setup,
+            get: {
+                response_type: $get_response_type
+            },
+            post: {
+                valid_item: $post_valid_item,
+                test_cases: { $($post_test_case_name: $post_test_case_input,)* }
+            },
+            patch: {
+                valid_changes: $patch_valid_changes,
+                test_cases: { $($patch_test_case_name: $patch_test_case_input,)* }
+            }
+        }
+    };
+    (
+        model_plural: $model_plural:ident,
         get: {
             response_type: $get_response_type:path
         },
@@ -497,16 +529,15 @@ macro_rules! test_crud_utils {
                     for i in 0..10 {
                         let session_response =
                             email_register_and_login_user(client, &format!("alex{}", i)).await;
-                        setup_lists_default(client, &session_response).await;
+                        [<setup_ $model_plural _default>](client, &session_response).await;
                     }
 
                     let session_response = email_register_and_login_user_default(client).await;
-                    let list_ids = [<setup_ $model_plural _default>](client, &session_response).await;
+                    let item_ids = [<setup_ $model_plural _default>](client, &session_response).await;
 
-                    (session_response, list_ids, &[<DEFAULT_ $model_plural:upper>])
+                    (session_response, item_ids, &[<DEFAULT_ $model_plural:upper>])
                 }
 
-                /// Posts a default collection of lists into the API, and returns the ids of the posted lists.
                 pub async fn [<setup_ $model_plural _default>](
                     client: &HttpClient,
                     session_response: &SessionResponse,
@@ -514,7 +545,6 @@ macro_rules! test_crud_utils {
                     [<setup_ $model_plural>](client, session_response, &[<DEFAULT_ $model_plural:upper>]).await
                 }
 
-                /// Posts a collection of lists into the API, and returns the ids of the posted lists.
                 pub async fn [<setup_ $model_plural>](
                     client: &HttpClient,
                     session_response: &SessionResponse,
@@ -523,7 +553,7 @@ macro_rules! test_crud_utils {
                     let mut vec = Vec::<Uuid>::new();
                     for req in reqs {
                         let res = client
-                            .post("/lists")
+                            .post(stringify!($model_plural))
                             .bearer_auth(session_response.session_token)
                             .json(&req)
                             .send()
