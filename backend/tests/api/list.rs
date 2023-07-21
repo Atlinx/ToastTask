@@ -5,7 +5,8 @@
 use crate::test_crud;
 
 test_crud! {
-    model_path: "/lists",
+    model_path: "lists",
+    rud_setup: utils::rud_setup,
     post: {
         valid_item: json!({
             "title": "Grocery list",
@@ -21,6 +22,7 @@ test_crud! {
                 "title": "Grocery list",
                 "color": "#ffa783",
             }), StatusCode::CREATED),
+
             invalid_0: (json!({
                 "title": "Grocery list",
                 "color": true,
@@ -32,7 +34,7 @@ test_crud! {
         }
     },
     get: {
-        response_type: GetListResponse
+        response_type: utils::GetListResponse
     },
     patch: {
         valid_changes: json!({
@@ -51,10 +53,10 @@ test_crud! {
                 "description": null
             }), StatusCode::OK),
 
-            invalid_2: (json!({
-                "description": null,
+            invalid_0: (json!({
+                "color": null,
             }), StatusCode::BAD_REQUEST),
-            invalid_3: (json!({
+            invalid_1: (json!({
                 "title": null,
                 "description": "This is an updated list",
                 "color": "#3849dfa"
@@ -89,7 +91,7 @@ pub mod extra {
             .send()
             .await
             .expect("Expected response");
-        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
 }
 
@@ -120,8 +122,7 @@ pub mod utils {
         color: String,
     }
 
-    // TODO: Refactor this is a return value from rud_setup
-    pub static DEFAULT_ITEMS: Lazy<Vec<Value>> = Lazy::new(|| {
+    pub static DEFAULT_LISTS: Lazy<Vec<Value>> = Lazy::new(|| {
         vec![
             json!({
               "title": "Grocery list",
@@ -145,7 +146,9 @@ pub mod utils {
     });
 
     /// Sets up the backend to run tests on read, update, and delete operations
-    pub async fn rud_setup(client: &HttpClient) -> (SessionResponse, Vec<Uuid>) {
+    pub async fn rud_setup(
+        client: &HttpClient,
+    ) -> (SessionResponse, Vec<Uuid>, &Vec<serde_json::Value>) {
         // Other user's data, which should be irrelevant
         for i in 0..10 {
             let session_response =
@@ -156,7 +159,7 @@ pub mod utils {
         let session_response = email_register_and_login_user_default(client).await;
         let list_ids = setup_lists_default(client, &session_response).await;
 
-        (session_response, list_ids)
+        (session_response, list_ids, &DEFAULT_LISTS)
     }
 
     /// Posts a default collection of lists into the API, and returns the ids of the posted lists.
@@ -164,7 +167,7 @@ pub mod utils {
         client: &HttpClient,
         session_response: &SessionResponse,
     ) -> Vec<Uuid> {
-        setup_lists(client, session_response, &DEFAULT_ITEMS).await
+        setup_lists(client, session_response, &DEFAULT_LISTS).await
     }
 
     /// Posts a collection of lists into the API, and returns the ids of the posted lists.

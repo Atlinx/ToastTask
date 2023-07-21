@@ -50,7 +50,13 @@ impl HttpClient {
     fn get_path(&self, path: &str) -> String {
         match path.contains("://") {
             true => path.to_owned(),
-            false => format!("{}{}", self.base_url, path),
+            false => {
+                if !path.starts_with("/") {
+                    format!("{}/{}", self.base_url, path)
+                } else {
+                    format!("{}{}", self.base_url, path)
+                }
+            }
         }
     }
 

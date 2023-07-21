@@ -13,8 +13,8 @@ use crate::{
     guards::auth::Auth,
     models::{list::ListModel, user::UserModel},
     responses::{
-        internal_server_error, not_found, ok, result_not_found, APIResponse, APIResult,
-        MapAPIResponse,
+        bad_request, internal_server_error, not_found, ok, result_not_found, APIResponse,
+        APIResult, MapAPIResponse,
     },
     update_set,
 };
@@ -65,18 +65,15 @@ async fn get_single(
     )
     .fetch_one(&mut *db)
     .await
-    .map_err(|e| {
-        println!("got error {:#?}", e);
-        match e {
-            RowNotFound => not_found("Item not found."),
-            _ => internal_server_error("Error fetching lists"),
-        }
+    .map_err(|e| match e {
+        RowNotFound => not_found("Item not found."),
+        _ => internal_server_error("Error fetching lists"),
     })?;
-    println!("Queries item");
-    let json = serde_json::to_value(item)
-        .map_internal_server_error("Failed to convert response into json.")?;
-    println!("made response");
-    Ok(APIResponse::new(Status::Ok, json))
+    Ok(APIResponse::new(
+        Status::Ok,
+        serde_json::to_value(item)
+            .map_internal_server_error("Failed to convert response into json.")?,
+    ))
 }
 
 #[post("/", data = "<input>", format = "application/json")]
@@ -117,17 +114,15 @@ async fn patch(
         color: input.color;
         "WHERE id = $1 AND user_id = $2"
     };
-    println!("got update str: {:#?}", update_str);
     let result = sqlx::query(update_str)
         .bind(id)
         .bind(auth_user.id)
         .execute(&mut *db)
         .await
-        .map_err(|e| {
-            println!("patch got error: {:#?}", e);
-            internal_server_error("Failed to patch in database")
+        .map_err(|e| match e {
+            sqlx::Error::Database(_) => bad_request("Invalid patch request."),
+            _ => internal_server_error("Failed to patch in database."),
         })?;
-    // .map_internal_server_error("Failed to patch in database.")?;
     if result.rows_affected() == 0 {
         return result_not_found("Item not found.");
     }

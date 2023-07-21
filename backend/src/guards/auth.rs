@@ -43,7 +43,6 @@ impl<'r> FromRequest<'r> for Auth<UserModel> {
         }
 
         let auth_header = keys[0];
-
         let session_id: Uuid = try_outcome!(Uuid::parse_str(&auth_header.replace("Bearer ", ""))
             .as_outcome()
             .map_unauthorized(req, "Bearer session token must be valid UUID."));
