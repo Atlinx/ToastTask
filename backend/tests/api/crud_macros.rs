@@ -1,60 +1,6 @@
 // TODO AFTER TESETING: Make a single model integration test into a macro
 
 #[macro_export]
-macro_rules! test_post {
-    (
-        model_path: $model_path:expr,
-        valid_item: $valid_item:expr,
-        test_cases: { $($test_case_name:ident: $test_case_input:expr,)* }
-    ) => {
-        pub mod post {
-            use crate::{api::auth::email::utils::email_register_and_login_user_default, commons};
-            use reqwest::StatusCode;
-            use serde_json::json;
-
-            #[rocket::async_test]
-            async fn post_unauth() {
-                let client = commons::setup().await;
-                let _ = email_register_and_login_user_default(&client).await;
-                let res = client
-                    .post($model_path)
-                    .json(&$valid_item)
-                    .send()
-                    .await
-                    .expect("Expected response");
-                assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
-            }
-
-            pub mod test_case {
-                use crate::{api::{utils::PostResponse, auth::email::utils::email_register_and_login_user_default}, commons::self};
-                use reqwest::StatusCode;
-                use serde_json::json;
-
-                $(
-                    #[rocket::async_test]
-                    async fn $test_case_name() {
-                        let (json, status) = $test_case_input;
-                        let client = commons::setup().await;
-                        let session_response = email_register_and_login_user_default(&client).await;
-                        let res = client
-                            .post($model_path)
-                            .bearer_auth(session_response.session_token)
-                            .json(&json)
-                            .send()
-                            .await
-                            .expect("Expected response");
-                        assert_eq!(res.status(), status);
-                        if status == StatusCode::CREATED {
-                            res.json::<PostResponse>().await.expect("Expected correct json response");
-                        }
-                    }
-                )*
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! test_get {
     (
         model_path: $model_path:expr, 
@@ -68,7 +14,7 @@ macro_rules! test_get {
                 use uuid::Uuid;
 
                 use super::super::{$rud_setup, $response_type as ResponseType};
-                use crate::commons;
+                use crate::{api::auth::email::utils::email_register_and_login_user, commons};
 
                 #[rocket::async_test]
                 async fn get_individual_unauth() {
@@ -100,6 +46,23 @@ macro_rules! test_get {
                             expected: default_item
                         );
                     }
+                }
+
+                #[rocket::async_test]
+                async fn get_single_other_unauth() {
+                    let client = commons::setup().await;
+            
+                    let alice_session_response = email_register_and_login_user(&client, "alice").await;
+            
+                    let (_, _, bob_item_ids) = rud_setup(&client).await;
+            
+                    let res = client
+                        .get(&format!("{}/{}", $model_path, bob_item_ids.first().unwrap()))
+                        .bearer_auth(alice_session_response.session_token)
+                        .send()
+                        .await
+                        .expect("Expected response");
+                    assert_eq!(res.status(), StatusCode::NOT_FOUND);
                 }
 
                 #[rocket::async_test]
@@ -207,6 +170,60 @@ macro_rules! test_get {
             }
         }
     }
+}
+
+#[macro_export]
+macro_rules! test_post {
+    (
+        model_path: $model_path:expr,
+        valid_item: $valid_item:expr,
+        test_cases: { $($test_case_name:ident: $test_case_input:expr,)* }
+    ) => {
+        pub mod post {
+            use crate::{api::auth::email::utils::email_register_and_login_user_default, commons};
+            use reqwest::StatusCode;
+            use serde_json::json;
+
+            #[rocket::async_test]
+            async fn post_unauth() {
+                let client = commons::setup().await;
+                let _ = email_register_and_login_user_default(&client).await;
+                let res = client
+                    .post($model_path)
+                    .json(&$valid_item)
+                    .send()
+                    .await
+                    .expect("Expected response");
+                assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+            }
+
+            pub mod test_case {
+                use crate::{api::{utils::PostResponse, auth::email::utils::email_register_and_login_user_default}, commons::self};
+                use reqwest::StatusCode;
+                use serde_json::json;
+
+                $(
+                    #[rocket::async_test]
+                    async fn $test_case_name() {
+                        let (json, status) = $test_case_input;
+                        let client = commons::setup().await;
+                        let session_response = email_register_and_login_user_default(&client).await;
+                        let res = client
+                            .post($model_path)
+                            .bearer_auth(session_response.session_token)
+                            .json(&json)
+                            .send()
+                            .await
+                            .expect("Expected response");
+                        assert_eq!(res.status(), status);
+                        if status == StatusCode::CREATED {
+                            res.json::<PostResponse>().await.expect("Expected correct json response");
+                        }
+                    }
+                )*
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -374,12 +391,12 @@ macro_rules! test_crud {
     (
         model_path: $model_path:expr,
         rud_setup: $rud_setup:path,
+        get: {
+            response_type: $get_response_type:path
+        },
         post: {
             valid_item: $post_valid_item:expr,
             test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
-        },
-        get: {
-            response_type: $get_response_type:path
         },
         patch: {
             valid_changes: $patch_valid_changes:expr,

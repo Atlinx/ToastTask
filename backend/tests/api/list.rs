@@ -7,6 +7,9 @@ use crate::test_crud;
 test_crud! {
     model_path: "lists",
     rud_setup: utils::rud_setup,
+    get: {
+        response_type: utils::GetListResponse
+    },
     post: {
         valid_item: json!({
             "title": "Grocery list",
@@ -32,9 +35,6 @@ test_crud! {
                 "color": "sdfsdf",
             }), StatusCode::BAD_REQUEST),
         }
-    },
-    get: {
-        response_type: utils::GetListResponse
     },
     patch: {
         valid_changes: json!({
@@ -64,35 +64,6 @@ test_crud! {
         }
     },
     delete: {}
-}
-
-pub mod extra {
-    use reqwest::StatusCode;
-
-    use crate::{
-        api::{
-            auth::email::utils::email_register_and_login_user, list::utils::setup_lists_default,
-        },
-        commons,
-    };
-
-    #[rocket::async_test]
-    async fn get_list_individual_other_unauth() {
-        let client = commons::setup().await;
-
-        let alice_session_response = email_register_and_login_user(&client, "alice").await;
-
-        let bob_session_response = email_register_and_login_user(&client, "bob").await;
-        let bob_list_ids = setup_lists_default(&client, &bob_session_response).await;
-
-        let res = client
-            .get(&format!("lists/{}", bob_list_ids.first().unwrap()))
-            .bearer_auth(alice_session_response.session_token)
-            .send()
-            .await
-            .expect("Expected response");
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    }
 }
 
 pub mod utils {
