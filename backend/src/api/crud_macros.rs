@@ -197,6 +197,29 @@ macro_rules! api_delete {
 macro_rules! api_crud {
     (
         model_table: $model_table:expr,
+        model_fields: { $($model_field:ident),+ },
+        get_model: $get_model:path,
+        post_input: $post_input:path,
+        patch_input: $patch_input:path
+    ) => {
+        crate::api_crud!(
+            model_table: $model_table,
+            get: {
+                model_type: $get_model,
+            },
+            post: {
+                input: $post_input,
+                input_fields: $($model_field),+
+            },
+            patch: {
+                input: $patch_input,
+                input_fields: $($model_field),+
+            },
+            delete: {}
+        );
+    };
+    (
+        model_table: $model_table:expr,
         get: {
             model_type: $get_model:path,
         },

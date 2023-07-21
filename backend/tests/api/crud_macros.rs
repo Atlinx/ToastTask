@@ -401,8 +401,7 @@ macro_rules! test_crud {
         patch: {
             valid_changes: $patch_valid_changes:expr,
             test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
-        },
-        delete: {}
+        }
     ) => {
         crate::test_post!(
             model_path: $model_path,
@@ -425,4 +424,121 @@ macro_rules! test_crud {
             rud_setup: $rud_setup
         );
     };
+    (
+        model_plural: $model_plural:ident,
+        get: {
+            response_type: $get_response_type:path
+        },
+        post: {
+            valid_item: $post_valid_item:expr,
+            test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
+        },
+        patch: {
+            valid_changes: $patch_valid_changes:expr,
+            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
+        },
+        default_items: { $($default_item:expr),+ }
+    ) => {
+        crate::test_crud! {
+            model_path: stringify!($model_plural),
+            rud_setup: utils::rud_setup,
+            get: {
+                response_type: $get_response_type
+            },
+            post: {
+                valid_item: $post_valid_item,
+                test_cases: { $($post_test_case_name: $post_test_case_input,)* }
+            },
+            patch: {
+                valid_changes: $patch_valid_changes,
+                test_cases: { $($patch_test_case_name: $patch_test_case_input,)* }
+            }
+        }
+        crate::test_crud_utils! {
+            model_plural: $model_plural,
+            default_items: $($default_item),+
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! test_crud_utils {
+    (
+        model_plural: $model_plural:ident,
+        default_items: $($default_item:expr),+
+    ) => {
+        paste::paste!{
+            pub mod utils {
+                use once_cell::sync::Lazy;
+                use reqwest::StatusCode;
+                use serde_json::{json, Value};
+                use uuid::Uuid;
+
+                use crate::{
+                    api::{
+                        auth::email::utils::{
+                            email_register_and_login_user, email_register_and_login_user_default,
+                            SessionResponse,
+                        },
+                        utils::PostResponse,
+                    },
+                    commons::http_client::HttpClient,
+                };
+
+                pub static [<DEFAULT_ $model_plural:upper>]: Lazy<Vec<Value>> = Lazy::new(|| {
+                    vec![$($default_item),+]
+                });
+
+                /// Sets up the backend to run tests on read, update, and delete operations
+                pub async fn rud_setup(
+                    client: &HttpClient,
+                ) -> (SessionResponse, Vec<Uuid>, &Vec<serde_json::Value>) {
+                    // Other user's data, which should be irrelevant
+                    for i in 0..10 {
+                        let session_response =
+                            email_register_and_login_user(client, &format!("alex{}", i)).await;
+                        setup_lists_default(client, &session_response).await;
+                    }
+
+                    let session_response = email_register_and_login_user_default(client).await;
+                    let list_ids = [<setup_ $model_plural _default>](client, &session_response).await;
+
+                    (session_response, list_ids, &[<DEFAULT_ $model_plural:upper>])
+                }
+
+                /// Posts a default collection of lists into the API, and returns the ids of the posted lists.
+                pub async fn [<setup_ $model_plural _default>](
+                    client: &HttpClient,
+                    session_response: &SessionResponse,
+                ) -> Vec<Uuid> {
+                    [<setup_ $model_plural>](client, session_response, &[<DEFAULT_ $model_plural:upper>]).await
+                }
+
+                /// Posts a collection of lists into the API, and returns the ids of the posted lists.
+                pub async fn [<setup_ $model_plural>](
+                    client: &HttpClient,
+                    session_response: &SessionResponse,
+                    reqs: &Vec<Value>,
+                ) -> Vec<Uuid> {
+                    let mut vec = Vec::<Uuid>::new();
+                    for req in reqs {
+                        let res = client
+                            .post("/lists")
+                            .bearer_auth(session_response.session_token)
+                            .json(&req)
+                            .send()
+                            .await
+                            .expect("Expected response");
+                        assert_eq!(res.status(), StatusCode::CREATED);
+                        let response = res
+                            .json::<PostResponse>()
+                            .await
+                            .expect("Expected correct json response");
+                        vec.push(response.id);
+                    }
+                    vec
+                }
+            }
+        }
+    }
 }

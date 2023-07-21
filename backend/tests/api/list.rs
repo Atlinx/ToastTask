@@ -2,18 +2,15 @@
 
 // TODO AFTER TESETING: Make a single model integration test into a macro
 
-use crate::test_crud;
-
-test_crud! {
-    model_path: "lists",
-    rud_setup: utils::rud_setup,
+crate::test_crud! {
+    model_plural: lists,
     get: {
-        response_type: utils::GetListResponse
+        response_type: GetListResponse
     },
     post: {
         valid_item: json!({
             "title": "Grocery list",
-            "color": "sdfsdf",
+            "color": "#ffa783",
         }),
         test_cases: {
             valid_0: (json!({
@@ -63,106 +60,36 @@ test_crud! {
             }), StatusCode::BAD_REQUEST),
         }
     },
-    delete: {}
+    default_items: {
+        json!({
+            "title": "Grocery list",
+            "description": "List of groceries for next week's event.",
+            "color": "#ffa783",
+        }),
+        json!({
+            "title": "Todo list",
+            "description": "Dail for next week's event.",
+            "color": "#ba8778",
+        }),
+        json!({
+            "title": "Homework list",
+            "color": "#89a783",
+        }),
+        json!({
+            "title": "Birthday list",
+            "color": "#370073",
+        })
+    }
 }
 
-pub mod utils {
-    use once_cell::sync::Lazy;
-    use reqwest::StatusCode;
-    use serde::{Deserialize, Serialize};
-    use serde_json::{json, Value};
-    use uuid::Uuid;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-    use crate::{
-        api::{
-            auth::email::utils::{
-                email_register_and_login_user, email_register_and_login_user_default,
-                SessionResponse,
-            },
-            utils::PostResponse,
-        },
-        commons::http_client::HttpClient,
-    };
-
-    #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-    pub struct GetListResponse {
-        id: Uuid,
-        user_id: Uuid,
-        title: String,
-        description: Option<String>,
-        color: String,
-    }
-
-    pub static DEFAULT_LISTS: Lazy<Vec<Value>> = Lazy::new(|| {
-        vec![
-            json!({
-              "title": "Grocery list",
-              "description": "List of groceries for next week's event.",
-              "color": "#ffa783",
-            }),
-            json!({
-              "title": "Todo list",
-              "description": "Dail for next week's event.",
-              "color": "#ba8778",
-            }),
-            json!({
-              "title": "Homework list",
-              "color": "#89a783",
-            }),
-            json!({
-              "title": "Birthday list",
-              "color": "#370073",
-            }),
-        ]
-    });
-
-    /// Sets up the backend to run tests on read, update, and delete operations
-    pub async fn rud_setup(
-        client: &HttpClient,
-    ) -> (SessionResponse, Vec<Uuid>, &Vec<serde_json::Value>) {
-        // Other user's data, which should be irrelevant
-        for i in 0..10 {
-            let session_response =
-                email_register_and_login_user(client, &format!("alex{}", i)).await;
-            setup_lists_default(client, &session_response).await;
-        }
-
-        let session_response = email_register_and_login_user_default(client).await;
-        let list_ids = setup_lists_default(client, &session_response).await;
-
-        (session_response, list_ids, &DEFAULT_LISTS)
-    }
-
-    /// Posts a default collection of lists into the API, and returns the ids of the posted lists.
-    pub async fn setup_lists_default(
-        client: &HttpClient,
-        session_response: &SessionResponse,
-    ) -> Vec<Uuid> {
-        setup_lists(client, session_response, &DEFAULT_LISTS).await
-    }
-
-    /// Posts a collection of lists into the API, and returns the ids of the posted lists.
-    pub async fn setup_lists(
-        client: &HttpClient,
-        session_response: &SessionResponse,
-        reqs: &Vec<Value>,
-    ) -> Vec<Uuid> {
-        let mut vec = Vec::<Uuid>::new();
-        for req in reqs {
-            let res = client
-                .post("/lists")
-                .bearer_auth(session_response.session_token)
-                .json(&req)
-                .send()
-                .await
-                .expect("Expected response");
-            assert_eq!(res.status(), StatusCode::CREATED);
-            let response = res
-                .json::<PostResponse>()
-                .await
-                .expect("Expected correct json response");
-            vec.push(response.id);
-        }
-        vec
-    }
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GetListResponse {
+    id: Uuid,
+    user_id: Uuid,
+    title: String,
+    description: Option<String>,
+    color: String,
 }

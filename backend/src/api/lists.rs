@@ -1,20 +1,11 @@
 crate::api_crud! {
   model_table: "lists",
-  get: {
-      model_type: crate::models::list::ListModel,
-  },
-  post: {
-      input: PostInput,
-      input_fields: title, description, color
-  },
-  patch: {
-      input: PatchInput,
-      input_fields: title, description, color
-  },
-  delete: {}
+  model_fields: { title, description, color },
+  get_model: crate::models::list::ListModel,
+  post_input: PostInput,
+  patch_input: PatchInput
 }
 
-// TODO: REMOVE THIS LATER
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
