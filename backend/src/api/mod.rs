@@ -1,6 +1,5 @@
 use rocket::{Build, Rocket};
 
-pub mod _temp;
 pub mod auth;
 pub mod crud_macros;
 pub mod general;
