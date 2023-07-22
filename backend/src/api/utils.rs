@@ -92,6 +92,20 @@ macro_rules! print_sql {
 }
 
 #[macro_export]
+macro_rules! insert_query_string {
+    (
+        model_table: $model_table:expr,
+        input_fields: $($input_field:ident),+
+    ) => {
+        static QUERY_STRING: Lazy<String> = Lazy::new(|| {
+            let fields = vec![$(stringify!($input_field)),+];
+            let value_fields: Vec<String> = fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 2)).collect();
+            format!("INSERT INTO {} (user_id, {}) VALUES ($1, {}) RETURNING id", $model_table, fields.join(", "), value_fields.join(", "))
+        });
+    }
+}
+
+#[macro_export]
 macro_rules! update_set {
     ($table:expr; $($name:ident: $value:expr),*) => {
         update_set!($table, $($name, $value),*; "")

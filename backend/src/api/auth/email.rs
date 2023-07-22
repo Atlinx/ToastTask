@@ -81,12 +81,10 @@ async fn email_registeration(
         return Err(bad_request("Email is already taken."));
     }
 
-    let mut trans = db.begin().await.map_err(|_| {
-        APIResponse::new_message(
-            Status::InternalServerError,
-            "Create user transaction failed to start.",
-        )
-    })?;
+    let mut trans = db
+        .begin()
+        .await
+        .map_internal_server_error("Create user transaction failed to start.")?;
     let new_user_id = sqlx::query!(
         "INSERT INTO users(username) VALUES ($1) RETURNING id",
         email_user_registration.username

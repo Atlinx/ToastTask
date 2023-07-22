@@ -12,7 +12,9 @@ use uuid::Uuid;
 
 use self::http_client::HttpClient;
 
+pub mod crud_macros;
 pub mod http_client;
+pub mod parent_child_macros;
 pub mod utils;
 
 pub async fn setup() -> HttpClient {

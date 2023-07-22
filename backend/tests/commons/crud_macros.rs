@@ -1,5 +1,5 @@
-// TODO AFTER TESETING: Make a single model integration test into a macro
-
+/// Generates tests for models that have
+/// a get endpoint.
 #[macro_export]
 macro_rules! test_get {
     (
@@ -52,7 +52,7 @@ macro_rules! test_get {
                 async fn get_single_other_unauth() {
                     let client = commons::setup().await;
             
-                    let alice_session_response = email_register_and_login_user(&client, "alice").await;
+                    let (alice_session_response, _) = email_register_and_login_user(&client, "alice").await;
             
                     let (_, _, bob_item_ids) = rud_setup(&client).await;
             
@@ -85,11 +85,8 @@ macro_rules! test_get {
 
                 use super::super::{$rud_setup, $response_type as ResponseType};
                 use crate::{
-                    api::{
-                        auth::email::utils::SessionResponse,
-                        utils::GetAllResponse,
-                    },
-                    commons::{self, http_client::HttpClient},
+                    api::auth::email::utils::SessionResponse,
+                    commons::{self, http_client::HttpClient, utils::rest::GetAllResponse},
                 };
 
                 #[rocket::async_test]
@@ -172,6 +169,8 @@ macro_rules! test_get {
     }
 }
 
+/// Generates tests for models that have
+/// a post endpoint.
 #[macro_export]
 macro_rules! test_post {
     (
@@ -198,7 +197,14 @@ macro_rules! test_post {
             }
 
             pub mod test_case {
-                use crate::{api::{utils::PostResponse, auth::email::utils::email_register_and_login_user_default}, commons::self};
+                use crate::{
+                    api::{
+                        auth::email::utils::email_register_and_login_user_default}, 
+                        commons::{
+                            self,
+                            utils::rest::PostResponse
+                        }
+                    };
                 use reqwest::StatusCode;
                 use serde_json::json;
 
@@ -207,7 +213,7 @@ macro_rules! test_post {
                     async fn $test_case_name() {
                         let (json, status) = $test_case_input;
                         let client = commons::setup().await;
-                        let session_response = email_register_and_login_user_default(&client).await;
+                        let (session_response, _) = email_register_and_login_user_default(&client).await;
                         let res = client
                             .post($model_path)
                             .bearer_auth(session_response.session_token)
@@ -226,6 +232,8 @@ macro_rules! test_post {
     };
 }
 
+/// Generates tests for models that have
+/// a patch endpoint.
 #[macro_export]
 macro_rules! test_patch {
     (
@@ -315,6 +323,8 @@ macro_rules! test_patch {
     }
 }
 
+/// Generates tests for models that have
+/// a delete endpoint.
 #[macro_export]
 macro_rules! test_delete {
     (
@@ -386,6 +396,8 @@ macro_rules! test_delete {
     };
 }
 
+/// Generates tests for models that have
+/// a CRUD endpoint.
 #[macro_export]
 macro_rules! test_crud {
     (
@@ -425,8 +437,8 @@ macro_rules! test_crud {
         );
     };
     (
+        model_path: $model_path:expr,
         model_plural: $model_plural:ident,
-        rud_setup: $rud_setup:path,
         get: {
             response_type: $get_response_type:path
         },
@@ -441,8 +453,8 @@ macro_rules! test_crud {
         default_items: { $($default_item:expr),+ }
     ) => {
         crate::test_crud! {
-            model_path: stringify!($model_plural),
-            rud_setup: $rud_setup,
+            model_path: $model_path,
+            rud_setup: utils::rud_setup,
             get: {
                 response_type: $get_response_type
             },
@@ -455,8 +467,14 @@ macro_rules! test_crud {
                 test_cases: { $($patch_test_case_name: $patch_test_case_input,)* }
             }
         }
+        crate::test_crud_utils! {
+            model_path: $model_path,
+            model_plural: $model_plural,
+            default_items: { $($default_item),+ }
+        }
     };
     (
+        model_path: $model_path:expr,
         model_plural: $model_plural:ident,
         get: {
             response_type: $get_response_type:path
@@ -469,10 +487,11 @@ macro_rules! test_crud {
             valid_changes: $patch_valid_changes:expr,
             test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
         },
-        default_items: { $($default_item:expr),+ }
+        default_items: { $($default_item:expr),+ },
+        setup_items_fn: $setup_items_fn:path
     ) => {
         crate::test_crud! {
-            model_path: stringify!($model_plural),
+            model_path: $model_path,
             rud_setup: utils::rud_setup,
             get: {
                 response_type: $get_response_type
@@ -488,7 +507,8 @@ macro_rules! test_crud {
         }
         crate::test_crud_utils! {
             model_plural: $model_plural,
-            default_items: $($default_item),+
+            default_items: { $($default_item),+ },
+            setup_items_fn: $setup_items_fn
         }
     };
 }
@@ -496,13 +516,64 @@ macro_rules! test_crud {
 #[macro_export]
 macro_rules! test_crud_utils {
     (
+        model_path: $model_path:expr,
         model_plural: $model_plural:ident,
-        default_items: $($default_item:expr),+
+        default_items: { $($default_item:expr),+ }
+    ) => {
+        crate::test_crud_utils! {
+            model_plural: $model_plural,
+            default_items: { $($default_item),+ },
+            setup_items_fn: default_utils::setup_items
+        }
+        
+        mod default_utils {
+            use serde_json::Value;
+            use reqwest::StatusCode;
+            use crate::{
+                api::auth::email::utils::SessionResponse,
+                commons::{
+                    http_client::HttpClient,
+                    utils::rest::PostResponse
+                }
+            };
+            use uuid::Uuid;
+
+            pub async fn setup_items(
+                client: &HttpClient, 
+                session_response: &SessionResponse, 
+                templates: &Vec<Value>
+            ) -> (Vec<Uuid>, Vec<Value>){
+                let mut uuid_vec = Vec::<Uuid>::new();
+                let mut value_vec = Vec::<Value>::new();
+                for template in templates {
+                    let req = template.clone();
+                    let res = client
+                        .post($model_path)
+                        .bearer_auth(session_response.session_token)
+                        .json(&template)
+                        .send()
+                        .await
+                        .expect("Expected response");
+                    assert_eq!(res.status(), StatusCode::CREATED);
+                    let response = res
+                        .json::<PostResponse>()
+                        .await
+                        .expect("Expected correct json response");
+                    uuid_vec.push(response.id);
+                    value_vec.push(req);
+                }
+                (uuid_vec, value_vec)
+            }            
+        }
+    };
+    (
+        model_plural: $model_plural:ident,
+        default_items: { $($default_item:expr),+ },
+        setup_items_fn: $setup_items_fn:path
     ) => {
         paste::paste!{
             pub mod utils {
                 use once_cell::sync::Lazy;
-                use reqwest::StatusCode;
                 use serde_json::{json, Value};
                 use uuid::Uuid;
 
@@ -512,61 +583,46 @@ macro_rules! test_crud_utils {
                             email_register_and_login_user, email_register_and_login_user_default,
                             SessionResponse,
                         },
-                        utils::PostResponse,
                     },
                     commons::http_client::HttpClient,
                 };
 
-                pub static [<DEFAULT_ $model_plural:upper>]: Lazy<Vec<Value>> = Lazy::new(|| {
+                pub static [<DEFAULT_ $model_plural:upper _TEMPLATES>]: Lazy<Vec<Value>> = Lazy::new(|| {
                     vec![$($default_item),+]
                 });
 
                 /// Sets up the backend to run tests on read, update, and delete operations
                 pub async fn rud_setup(
                     client: &HttpClient,
-                ) -> (SessionResponse, Vec<Uuid>, &Vec<serde_json::Value>) {
+                ) -> (SessionResponse, Vec<Uuid>, Vec<serde_json::Value>) {
                     // Other user's data, which should be irrelevant
                     for i in 0..10 {
-                        let session_response =
+                        let (session_response, _) =
                             email_register_and_login_user(client, &format!("alex{}", i)).await;
                         [<setup_ $model_plural _default>](client, &session_response).await;
                     }
 
-                    let session_response = email_register_and_login_user_default(client).await;
-                    let item_ids = [<setup_ $model_plural _default>](client, &session_response).await;
+                    let (session_response, _) = email_register_and_login_user_default(client).await;
+                    let (item_ids, items) = [<setup_ $model_plural _default>](client, &session_response).await;
 
-                    (session_response, item_ids, &[<DEFAULT_ $model_plural:upper>])
+                    (session_response, item_ids, items)
                 }
 
                 pub async fn [<setup_ $model_plural _default>](
                     client: &HttpClient,
                     session_response: &SessionResponse,
-                ) -> Vec<Uuid> {
-                    [<setup_ $model_plural>](client, session_response, &[<DEFAULT_ $model_plural:upper>]).await
+                ) -> (Vec<Uuid>, Vec<Value>) {
+                    [<setup_ $model_plural>](client, session_response, &[<DEFAULT_ $model_plural:upper _TEMPLATES>]).await
                 }
 
                 pub async fn [<setup_ $model_plural>](
                     client: &HttpClient,
                     session_response: &SessionResponse,
-                    reqs: &Vec<Value>,
-                ) -> Vec<Uuid> {
-                    let mut vec = Vec::<Uuid>::new();
-                    for req in reqs {
-                        let res = client
-                            .post(stringify!($model_plural))
-                            .bearer_auth(session_response.session_token)
-                            .json(&req)
-                            .send()
-                            .await
-                            .expect("Expected response");
-                        assert_eq!(res.status(), StatusCode::CREATED);
-                        let response = res
-                            .json::<PostResponse>()
-                            .await
-                            .expect("Expected correct json response");
-                        vec.push(response.id);
-                    }
-                    vec
+                    templates: &Vec<Value>,
+                ) -> (Vec<Uuid>, Vec<Value>) {
+                    use super::{$setup_items_fn as setup_items};
+
+                    setup_items(client, session_response, templates).await
                 }
             }
         }

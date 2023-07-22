@@ -1,9 +1,10 @@
 #![cfg(test)]
 
 crate::test_crud! {
+    model_path: "lists",
     model_plural: lists,
     get: {
-        response_type: GetListResponse
+        response_type: types::GetListResponse
     },
     post: {
         valid_item: json!({
@@ -76,18 +77,42 @@ crate::test_crud! {
         json!({
             "title": "Birthday list",
             "color": "#370073",
+        }),
+        json!({
+            "title": "School list",
+            "color": "#89a783",
+        }),
+        json!({
+            "title": "Work list",
+            "description": "List for work related stuff.",
+            "color": "#370073",
+        }),
+        json!({
+            "title": "Goals list",
+            "description": "List for big goals.",
+            "color": "#ff3872",
         })
     }
 }
 
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+crate::test_parent_child! {
+    model_path: "lists",
+    response_type: types::GetListResponse,
+    rud_setup: utils::rud_setup
+}
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct GetListResponse {
-    id: Uuid,
-    user_id: Uuid,
-    title: String,
-    description: Option<String>,
-    color: String,
+pub mod types {
+    use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+    pub struct GetListResponse {
+        pub id: Uuid,
+        pub user_id: Uuid,
+        pub title: String,
+        pub description: Option<String>,
+        pub color: String,
+        pub parent: Option<Uuid>,
+        pub children: Vec<Uuid>,
+    }
 }

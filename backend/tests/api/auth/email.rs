@@ -193,7 +193,7 @@ email_login_invalid! {
 
 pub mod utils {
     use reqwest::StatusCode;
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
     use serde_json::json;
     use uuid::Uuid;
 
@@ -205,36 +205,61 @@ pub mod utils {
         pub session_token: Uuid,
     }
 
+    #[derive(Serialize, Clone)]
+    pub struct EmailLoginCredentials {
+        pub email: String,
+        pub password: String,
+    }
+
     /// Registers and logs in a user, returning the session information for that user.
-    pub async fn email_register_and_login_user_default(client: &HttpClient) -> SessionResponse {
+    pub async fn email_register_and_login_user_default(
+        client: &HttpClient,
+    ) -> (SessionResponse, EmailLoginCredentials) {
         email_register_and_login_user(client, "johnsmith").await
     }
 
     /// Registers and logs in a user, returning the session information for that user.
-    pub async fn email_register_and_login_user(client: &HttpClient, name: &str) -> SessionResponse {
+    pub async fn email_register_and_login_user(
+        client: &HttpClient,
+        username: &str,
+    ) -> (SessionResponse, EmailLoginCredentials) {
+        let credentials = EmailLoginCredentials {
+            email: format!("{}@gmail.com", username),
+            password: format!("mypassword{}", username).to_owned(),
+        };
         let res = client
             .post("/register/email")
             .json(&json!({
-                "email": format!("{}@gmail.com", name),
-                "password": "mypassword",
-                "username": name
+                "email": credentials.email,
+                "password": credentials.password,
+                "username": username
             }))
             .send()
             .await
             .expect("Expected response");
         assert_eq!(res.status(), StatusCode::OK);
+        let resp = email_login_user(client, &credentials).await;
+        (resp, credentials)
+    }
+
+    pub async fn email_login_user(
+        client: &HttpClient,
+        credentials: &EmailLoginCredentials,
+    ) -> SessionResponse {
         let res = client
             .post("/login/email")
-            .json(&json!({
-                "email": format!("{}@gmail.com", name),
-                "password": "mypassword",
-            }))
+            .json(
+                &serde_json::to_value(credentials.clone())
+                    .expect("Expect credentials to serialize into json"),
+            )
             .send()
             .await
             .expect("Expected response");
         assert_eq!(res.status(), StatusCode::OK);
-        res.json::<SessionResponse>()
+        let resp = res
+            .json::<SessionResponse>()
             .await
-            .expect("Expected login response json")
+            .expect("Expected login response json");
+        resp
     }
 }
