@@ -95,9 +95,15 @@ crate::test_crud! {
     }
 }
 
+// TODO NOW: Debug api::lists::parent_child::reparent
+
 crate::test_parent_child! {
     model_path: "lists",
     response_type: types::GetListResponse,
+    valid_item: json!({
+        "title": "Grocery list",
+        "color": "#ffa783",
+    }),
     rud_setup: utils::rud_setup
 }
 

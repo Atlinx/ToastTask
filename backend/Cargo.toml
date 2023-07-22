@@ -30,3 +30,4 @@ spez = "0.1.2"
 [dev-dependencies]
 quickcheck = "0.9"
 assert-json-diff = "2.0.2"
+color-eyre = "0.6.2"

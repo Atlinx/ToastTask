@@ -12,6 +12,7 @@ macro_rules! test_parent_child {
     (
         model_path: $model_path:expr,
         response_type: $response_type:path,
+        valid_item: $valid_item:expr,
         rud_setup: $rud_setup:path
     ) => {
         pub mod parent_child {
@@ -20,7 +21,29 @@ macro_rules! test_parent_child {
             use uuid::Uuid;
 
             use super::{$rud_setup as rud_setup};
-            use crate::commons;
+            use crate::commons::{self, utils::rest::PostResponse};
+
+            #[rocket::async_test]
+            pub async fn post_with_parent() {
+                let client = commons::setup().await;
+                let (session_response, item_ids, _) = rud_setup(&client).await;
+
+                utils::assert_detached(&client, &session_response, item_ids[0]).await;
+
+                let mut post_input = $valid_item;
+                post_input["parent"] = serde_json::to_value(item_ids[0]).unwrap();
+                let res = client
+                    .post($model_path)
+                    .json(&post_input)
+                    .bearer_auth(session_response.session_token)
+                    .send()
+                    .await
+                    .expect("Expected a response");
+                assert_eq!(res.status(), StatusCode::CREATED);
+                let post_res = res.json::<PostResponse>().await.expect("Expected a json response");
+
+                utils::assert_has_parent(&client, &session_response, post_res.id, Some(item_ids[0])).await;
+            }
 
             #[rocket::async_test]
             pub async fn reparent_invalid() {
@@ -54,7 +77,7 @@ macro_rules! test_parent_child {
                 utils::reparent(&client, &session_response, item_ids[0], item_ids[1]).await;
 
                 // Parent-child relationship now exists
-                utils::assert_has_parent(&client, &session_response, item_ids[0], Some(item_ids[0])).await;
+                utils::assert_has_parent(&client, &session_response, item_ids[0], Some(item_ids[1])).await;
             }
 
             #[rocket::async_test]
@@ -121,7 +144,7 @@ macro_rules! test_parent_child {
                         .send()
                         .await
                         .expect("Expected a response");
-                        assert_eq!(res.status(), StatusCode::OK);
+                    assert_eq!(res.status(), StatusCode::OK);
                 }
 
                 /// Fetchs an item.
@@ -130,7 +153,7 @@ macro_rules! test_parent_child {
                     session_response: &SessionResponse,
                     item_id: Uuid,
                 ) -> ResponseType {
-                    client
+                    let res = client
                         .get(&format!("{}/{}", $model_path, item_id))
                         .bearer_auth(session_response.session_token)
                         .send()
@@ -138,7 +161,8 @@ macro_rules! test_parent_child {
                         .expect("Expected response")
                         .json::<ResponseType>()
                         .await
-                        .expect("Expected json response")
+                        .expect("Expected json response");
+                    res
                 }
 
                 /// Asserts that a child item has a parent.
@@ -148,14 +172,17 @@ macro_rules! test_parent_child {
                     child_id: Uuid,
                     parent_id: Option<Uuid>
                 ) {
+                    if let Some(parent_id) = parent_id {
+                        assert_ne!(child_id, parent_id, "Cannot assert parent_id = child_id");
+                    }
                     let child = get_item(&client, &session_response, child_id).await;
                     assert_eq!(
                         child.parent,
                         parent_id,
                         "Expected child to have parent"
                     );
-                    if let Some(id) = parent_id {
-                        let parent = get_item(&client, &session_response, id).await;
+                    if let Some(parent_id) = parent_id {
+                        let parent = get_item(&client, &session_response, parent_id).await;
                         assert!(
                             parent.children.contains(&child_id),
                             "Expected parent to have child \"{}\"",

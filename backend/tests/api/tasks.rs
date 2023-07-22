@@ -106,6 +106,10 @@ crate::test_crud! {
 crate::test_parent_child! {
     model_path: "tasks",
     response_type: types::GetTaskResponse,
+    valid_item: json!({
+        "title": "Grocery list",
+        "color": "#ffa783",
+    }),
     rud_setup: utils::rud_setup
 }
 

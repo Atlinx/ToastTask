@@ -21,4 +21,4 @@ echo -e "${BLUE}Run Test \"$1\":${ENDCOLOR}
   DATABASE_URL: ${DATABASE_URL}
 "
 
-cargo test $1 -- --exact --nocapture
+cargo test $1 -- --nocapture

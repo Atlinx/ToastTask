@@ -1,7 +1,6 @@
 use rocket::{Build, Rocket};
 
 pub mod auth;
-pub mod crud_macros;
 pub mod general;
 pub mod lists;
 pub mod utils;

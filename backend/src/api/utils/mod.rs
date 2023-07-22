@@ -1,6 +1,9 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 
+pub mod crud_macros;
+pub mod relation_crud_macros;
+
 pub const GET_LIMIT: u32 = 1000;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -114,16 +117,27 @@ macro_rules! update_set {
         {
             use crate::api::utils::{Patch};
 
+            let mut changes_exist = false;
             let mut name_value_pairs: Vec<String> = Vec::new();
             $(
                 match &$value {
                     Patch::Missing => (),
-                    Patch::Null => name_value_pairs.push(concat!( stringify!($name), "=NULL").to_owned()),
-                    Patch::Value(ref real_value) => name_value_pairs.push(format!("{}={}", stringify!($name), crate::print_sql!(real_value)))
+                    Patch::Null => {
+                        changes_exist = true;
+                        name_value_pairs.push(concat!( stringify!($name), "=NULL").to_owned())
+                    },
+                    Patch::Value(ref real_value) => {
+                        changes_exist = true;
+                        name_value_pairs.push(format!("{}={}", stringify!($name), crate::print_sql!(real_value)))
+                    }
                 }
             )*
 
-            &format!("UPDATE {} SET {} {}", $table, name_value_pairs.join(", "), $additional_sql)
+            if changes_exist {
+                Some(format!("UPDATE {} SET {} {}", $table, name_value_pairs.join(", "), $additional_sql))
+            } else {
+                None
+            }
         }
     }
 }

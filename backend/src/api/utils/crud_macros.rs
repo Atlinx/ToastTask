@@ -143,17 +143,19 @@ macro_rules! api_patch {
                 $($name: input.$name),+;
                 "WHERE id = $1 AND user_id = $2"
             };
-            let result = sqlx::query(update_str)
-                .bind(id)
-                .bind(auth_user.id)
-                .execute(&mut *db)
-                .await
-                .map_err(|e| match e {
-                    sqlx::Error::Database(_) => bad_request("Invalid patch request."),
-                    _ => internal_server_error("Failed to patch in database."),
-                })?;
-            if result.rows_affected() == 0 {
-                return result_not_found("Item not found.");
+            if let Some(update_str) = update_str {
+                let result = sqlx::query(update_str)
+                    .bind(id)
+                    .bind(auth_user.id)
+                    .execute(&mut *db)
+                    .await
+                    .map_err(|e| match e {
+                        sqlx::Error::Database(_) => bad_request("Invalid patch request."),
+                        _ => internal_server_error("Failed to patch in database."),
+                    })?;
+                if result.rows_affected() == 0 {
+                    return result_not_found("Item not found.");
+                }
             }
             Ok(ok("Patch successful."))
         }

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Once};
 
 use reqwest::header::HeaderMap;
 use rocket::tokio::{self, net::TcpListener};
@@ -17,7 +17,13 @@ pub mod http_client;
 pub mod parent_child_macros;
 pub mod utils;
 
+static SINGLE_SETUP: Once = Once::new();
+
 pub async fn setup() -> HttpClient {
+    SINGLE_SETUP.call_once(|| {
+        color_eyre::install().expect("Expected color_eyre to install");
+    });
+
     let mut app_config = get_config("test").expect("Expected test config to exist");
     app_config.backend_port = get_next_available_port().await;
 
