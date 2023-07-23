@@ -1,7 +1,6 @@
-crate::api_relation_crud! {
+crate::api_tree_crud! {
     model_table: "lists",
-    model_singular: "list",
-    model_fields: { title, description, color },
+    model_fields: { title, description, color, parent_id },
     get_model: GetModel,
     post_input: PostInput,
     patch_input: PatchInput
@@ -24,7 +23,7 @@ pub struct PatchInput {
     #[serde(default)]
     #[validate(custom = "validate_patch_color")]
     pub color: Patch<String>,
-    pub parent: Patch<Uuid>,
+    pub parent_id: Patch<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -33,7 +32,7 @@ pub struct PostInput {
     pub description: Option<String>,
     #[validate(custom = "validate_color")]
     pub color: String,
-    pub parent: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,8 +42,8 @@ pub struct GetModel {
     pub title: String,
     pub description: Option<String>,
     pub color: String,
-    pub parent: Option<Uuid>,
-    pub children: Vec<Uuid>,
+    pub parent_id: Option<Uuid>,
+    pub child_ids: Vec<Uuid>,
 }
 
 fn validate_patch_color(color: &Patch<String>) -> Result<(), ValidationError> {

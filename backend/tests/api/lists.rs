@@ -118,7 +118,7 @@ pub mod types {
         pub title: String,
         pub description: Option<String>,
         pub color: String,
-        pub parent: Option<Uuid>,
-        pub children: Vec<Uuid>,
+        pub parent_id: Option<Uuid>,
+        pub child_ids: Vec<Uuid>,
     }
 }

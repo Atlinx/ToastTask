@@ -17,8 +17,8 @@ export $(grep -v '^#' .env | xargs)
 export DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
 
 echo ""
-echo -e "${BLUE}Run Test \"$1\":${ENDCOLOR}
+echo -e "${BLUE}Run Test \"$1\" ("${@:2}"): ${ENDCOLOR}
   DATABASE_URL: ${DATABASE_URL}
 "
 
-cargo test $1 -- --nocapture
+cargo test $1 -- "${@:2}" --nocapture

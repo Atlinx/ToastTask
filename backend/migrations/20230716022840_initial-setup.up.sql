@@ -52,6 +52,7 @@ CREATE TABLE discord_user_logins (
 
 CREATE TABLE lists (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+  parent_id UUID REFERENCES lists ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users,
   title TEXT NOT NULL,
   description TEXT,
@@ -60,16 +61,11 @@ CREATE TABLE lists (
     CHECK (color ~* '^#[a-f0-9]{6}$')
 );
 CREATE INDEX list_user_idx ON lists(user_id);
-
-CREATE TABLE list_relations (
-  child_list_id UUID NOT NULL REFERENCES lists,
-  parent_list_id UUID NOT NULL REFERENCES lists,
-  PRIMARY KEY (child_list_id, parent_list_id)
-);
-CREATE INDEX parent_list_idx ON list_relations(parent_list_id);
+CREATE INDEX list_parent_idx ON lists(parent_id);
 
 CREATE TABLE tasks (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+  parent_id UUID REFERENCES tasks ON DELETE CASCADE,
   list_id UUID NOT NULL REFERENCES lists,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -80,13 +76,8 @@ CREATE TABLE tasks (
   description TEXT
 );
 SELECT manage_updated_at('tasks');
-
-CREATE TABLE task_relations (
-  child_task_id UUID NOT NULL REFERENCES tasks,
-  parent_task_id UUID NOT NULL REFERENCES tasks,
-  PRIMARY KEY (child_task_id, parent_task_id)
-);
-CREATE INDEX parent_task_idx ON task_relations(parent_task_id);
+CREATE INDEX task_list_idx ON tasks(list_id);
+CREATE INDEX task_parent_idx ON tasks(parent_id);
 
 CREATE TABLE labels (
   id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),

@@ -84,7 +84,7 @@ macro_rules! api_post {
     (
         model_table: $model_table:expr,
         input: $input:path,
-        input_fields: $($input_field:ident),+
+        input_fields: { $($input_field:ident),+ }
     ) => {
         #[post("/", data = "<input>", format = "application/json")]
         async fn post(
@@ -126,7 +126,7 @@ macro_rules! api_patch {
     (
         model_table: $model_table:expr,
         input: $input:path,
-        input_fields: $($name:ident),+
+        input_fields: { $($name:ident),+ }
     ) => {
         #[patch("/<id>", data = "<input>", format = "application/json")]
         async fn patch(
@@ -144,7 +144,7 @@ macro_rules! api_patch {
                 "WHERE id = $1 AND user_id = $2"
             };
             if let Some(update_str) = update_str {
-                let result = sqlx::query(update_str)
+                let result = sqlx::query(&update_str)
                     .bind(id)
                     .bind(auth_user.id)
                     .execute(&mut *db)
@@ -211,11 +211,11 @@ macro_rules! api_crud {
             },
             post: {
                 input: $post_input,
-                input_fields: $($model_field),+
+                input_fields: { $($model_field),+ }
             },
             patch: {
                 input: $patch_input,
-                input_fields: $($model_field),+
+                input_fields: { $($model_field),+ }
             },
             delete: {}
         );
@@ -227,11 +227,11 @@ macro_rules! api_crud {
         },
         post: {
             input: $post_input:path,
-            input_fields: $($post_input_field:ident),+
+            input_fields: { $($post_input_field:ident),+ }
         },
         patch: {
             input: $patch_input:path,
-            input_fields: $($patch_input_field:ident),+
+            input_fields: { $($patch_input_field:ident),+ }
         },
         delete: {}
     ) => {
@@ -242,12 +242,12 @@ macro_rules! api_crud {
         crate::api_post! {
             model_table: $model_table,
             input: $post_input,
-            input_fields: $($post_input_field),+
+            input_fields: { $($post_input_field),+ }
         }
         crate::api_patch! {
             model_table: $model_table,
             input: $patch_input,
-            input_fields: $($patch_input_field),+
+            input_fields: { $($patch_input_field),+ }
         }
         crate::api_delete! {
             model_table: $model_table

@@ -14,7 +14,7 @@ use self::http_client::HttpClient;
 
 pub mod crud_macros;
 pub mod http_client;
-pub mod parent_child_macros;
+pub mod tree_crud_macros;
 pub mod utils;
 
 static SINGLE_SETUP: Once = Once::new();

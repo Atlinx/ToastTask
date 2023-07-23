@@ -19,13 +19,13 @@ pub mod types {
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
     pub struct GetSessionResponse {
-        id: Uuid,
-        ip: IpNetwork,
-        platform: String,
-        user_agent: String,
-        created_at: NaiveDateTime,
-        expire_at: NaiveDateTime,
-        user_id: Uuid,
+        pub id: Uuid,
+        pub ip: IpNetwork,
+        pub platform: String,
+        pub user_agent: String,
+        pub created_at: NaiveDateTime,
+        pub expire_at: NaiveDateTime,
+        pub user_id: Uuid,
     }
 }
 

@@ -87,10 +87,10 @@ pub mod types {
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
     pub struct GetLabelResponse {
-        id: Uuid,
-        user_id: Uuid,
-        title: String,
-        description: Option<String>,
-        color: String,
+        pub id: Uuid,
+        pub user_id: Uuid,
+        pub title: String,
+        pub description: Option<String>,
+        pub color: String,
     }
 }

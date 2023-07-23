@@ -31,7 +31,7 @@ macro_rules! test_parent_child {
                 utils::assert_detached(&client, &session_response, item_ids[0]).await;
 
                 let mut post_input = $valid_item;
-                post_input["parent"] = serde_json::to_value(item_ids[0]).unwrap();
+                post_input["parent_id"] = serde_json::to_value(item_ids[0]).unwrap();
                 let res = client
                     .post($model_path)
                     .json(&post_input)
@@ -55,7 +55,7 @@ macro_rules! test_parent_child {
                 let res = client
                     .patch(&format!("{}/{}", $model_path, first_item_id))
                     .json(&json!({
-                        "parent": Uuid::new_v4()
+                        "parent_id": Uuid::new_v4()
                     }))
                     .bearer_auth(session_response.session_token)
                     .send()
@@ -138,7 +138,7 @@ macro_rules! test_parent_child {
                     let res = client
                         .patch(&format!("{}/{}", $model_path, child_id))
                         .json(&json!({
-                            "parent": parent_id
+                            "parent_id": parent_id
                         }))
                         .bearer_auth(session_response.session_token)
                         .send()
@@ -177,14 +177,14 @@ macro_rules! test_parent_child {
                     }
                     let child = get_item(&client, &session_response, child_id).await;
                     assert_eq!(
-                        child.parent,
+                        child.parent_id,
                         parent_id,
                         "Expected child to have parent"
                     );
                     if let Some(parent_id) = parent_id {
                         let parent = get_item(&client, &session_response, parent_id).await;
                         assert!(
-                            parent.children.contains(&child_id),
+                            parent.child_ids.contains(&child_id),
                             "Expected parent to have child \"{}\"",
                             child_id
                         );
@@ -199,7 +199,7 @@ macro_rules! test_parent_child {
                 ) {
                     let parent = get_item(&client, &session_response, parent_id).await;
                     assert!(
-                        parent.children.is_empty(),
+                        parent.child_ids.is_empty(),
                         "Expected parent to have no children"
                     );
                 }
@@ -213,11 +213,11 @@ macro_rules! test_parent_child {
                 ) {
                     let item = get_item(&client, &session_response, item_id).await;
                     assert!(
-                        item.children.is_empty(),
+                        item.child_ids.is_empty(),
                         "Expected item to have no children"
                     );
                     assert_eq!(
-                        item.parent,
+                        item.parent_id,
                         None,
                         "Expected item to have no parent"
                     );

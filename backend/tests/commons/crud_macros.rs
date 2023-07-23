@@ -100,9 +100,14 @@ macro_rules! test_get {
                 async fn assert_get_resp_valid(
                     client: &HttpClient,
                     session_response: &SessionResponse,
-                    all_items: Vec<ResponseType>,
-                    item_ids: Vec<Uuid>,
+                    mut all_items: Vec<ResponseType>,
+                    mut item_ids: Vec<Uuid>,
                 ) {
+                    item_ids.sort();
+                    all_items.sort_by(|a, b| a.id.cmp(&b.id));
+
+                    assert_eq!(item_ids.len(), all_items.len());
+
                     for (item_id, item) in item_ids.iter().zip(all_items.iter()) {
                         let single_fetch_item = client
                             .get(&format!("{}/{}", $model_path, item_id))
@@ -132,7 +137,7 @@ macro_rules! test_get {
                         .json::<GetAllResponse<ResponseType>>()
                         .await
                         .expect("Expected json response");
-
+                    
                     assert_get_resp_valid(&client, &session_response, get_all.items, item_ids).await;
                 }
 
@@ -376,7 +381,8 @@ macro_rules! test_delete {
                     .send()
                     .await
                     .expect("Expected response");
-                assert_eq!(confirm_exists_res.status(), StatusCode::OK);
+                let status = confirm_exists_res.status();
+                assert_eq!(status, StatusCode::OK);
                 let res = client
                     .delete(&format!("{}/{}", $model_path, item_id))
                     .bearer_auth(session_response.session_token)
