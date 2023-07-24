@@ -4,6 +4,19 @@ macro_rules! api_get {
         model_table: $model_table:expr,
         model_type: $model:path
     ) => {
+        crate::api_get! {
+            model_table: $model_table,
+            model_type: $model,
+            query_single_where: "WHERE id = $1 AND user_id = $2",
+            query_all_where: "WHERE user_id = $1"
+        }
+    };
+    (
+        model_table: $model_table:expr,
+        model_type: $model:path,
+        query_single_where: $query_single_where:expr,
+        query_all_where: $query_all_where:expr
+    ) => {
         #[get("/?<limit>&<page>")]
         async fn get_all(
             auth_user: crate::guards::auth::Auth<crate::models::user::UserModel>,
@@ -11,6 +24,7 @@ macro_rules! api_get {
             limit: Option<u32>,
             page: Option<u32>,
         ) -> crate::responses::APIResult {
+            use once_cell::sync::Lazy;
             use rocket::http::Status;
             use $model as ItemModel;
 
@@ -22,17 +36,19 @@ macro_rules! api_get {
             let limit = limit.unwrap_or(GET_LIMIT);
             let page = page.unwrap_or(0);
 
-            let items: Vec<ItemModel> = sqlx::query_as(concat!(
-                "SELECT * FROM ",
-                $model_table,
-                " WHERE user_id = $1 LIMIT $2 OFFSET $3"
-            ))
-            .bind(auth_user.id)
-            .bind(limit as i64)
-            .bind((page * limit) as i64)
-            .fetch_all(&mut *db)
-            .await
-            .map_internal_server_error("Error fetching lists")?;
+            static QUERY_STRING: Lazy<String> = Lazy::new(|| {
+                format!(
+                    "SELECT * FROM {} {} LIMIT $2 OFFSET $3",
+                    $model_table, $query_all_where
+                )
+            });
+            let items: Vec<ItemModel> = sqlx::query_as::<_, ItemModel>(&QUERY_STRING)
+                .bind(auth_user.id)
+                .bind(limit as i64)
+                .bind((page * limit) as i64)
+                .fetch_all(&mut *db)
+                .await
+                .map_internal_server_error("Error fetching lists")?;
 
             let resp = GetAllResponse::<ItemModel> { items, limit, page };
 
@@ -55,13 +71,9 @@ macro_rules! api_get {
 
             use crate::responses::{internal_server_error, not_found, APIResponse, MapAPIResponse};
 
-            static QUERY_STRING: Lazy<String> = Lazy::new(|| {
-                format!(
-                    "SELECT * FROM {} WHERE id = $1 AND user_id = $2",
-                    $model_table
-                )
-            });
-            let item: ItemModel = sqlx::query_as(&QUERY_STRING)
+            static QUERY_STRING: Lazy<String> =
+                Lazy::new(|| format!("SELECT * FROM {} {}", $model_table, $query_single_where));
+            let item: ItemModel = sqlx::query_as::<_, ItemModel>(&QUERY_STRING)
                 .bind(id)
                 .bind(auth_user.id)
                 .fetch_one(&mut *db)
@@ -86,14 +98,28 @@ macro_rules! api_post {
         input: $input:path,
         input_fields: { $($input_field:ident),+ }
     ) => {
+        crate::api_post! {
+            model_table: $model_table,
+            input: $input,
+            input_fields: { $($input_field),+ },
+            user_id: true
+        }
+    };
+    (
+        model_table: $model_table:expr,
+        input: $input:path,
+        input_fields: { $($input_field:ident),+ },
+        user_id: $user_id:expr
+    ) => {
         #[post("/", data = "<input>", format = "application/json")]
         async fn post(
             auth_user: crate::guards::auth::Auth<crate::models::user::UserModel>,
             mut db: rocket_db_pools::Connection<crate::database::BackendDb>,
-            input: rocket_validation::Validated<rocket::serde::json::Json<$input>>,
+            input: rocket::serde::json::Json<$input>,
         ) -> crate::responses::APIResult {
             use rocket::http::Status;
             use sqlx::Row;
+            use sqlx::postgres::PgRow;
 
             use crate::{
                 responses::{APIResponse, MapAPIResponse},
@@ -101,16 +127,31 @@ macro_rules! api_post {
             };
 
             let input = input.0;
-            static QUERY_STRING: Lazy<String> = Lazy::new(|| {
-                let fields = vec![$(stringify!($input_field)),+];
-                let value_fields: Vec<String> = fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 2)).collect();
-                format!("INSERT INTO {} (user_id, {}) VALUES ($1, {}) RETURNING id", $model_table, fields.join(", "), value_fields.join(", "))
-            });
-            let created = sqlx::query(&QUERY_STRING)
-                .bind(auth_user.id)
-                $(.bind(input.$input_field.clone()))+
-                .fetch_one(&mut *db).await;
-            let created = created.map_internal_server_error("Failed to create in database.")?;
+            let created: PgRow;
+            if $user_id {
+                static QUERY_STRING: Lazy<String> = Lazy::new(|| {
+                    let fields = vec![$(stringify!($input_field)),+];
+                    let value_fields: Vec<String> = fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 2)).collect();
+                    format!("INSERT INTO {} (user_id, {}) VALUES ($1, {}) RETURNING id", $model_table, fields.join(", "), value_fields.join(", "))
+                });
+                created = sqlx::query(&QUERY_STRING)
+                    .bind(auth_user.id)
+                    $(.bind(input.$input_field.clone()))+
+                    .fetch_one(&mut *db)
+                    .await
+                    .map_internal_server_error("Failed to create in database.")?;
+            } else {
+                let query = crate::post_query!(
+                    $model_table;
+                    $($input_field: input.$input_field),+;
+                    "RETURNING id"
+                );
+                created = sqlx::query(&query)
+                    // $(.bind(input.$input_field.clone()))+
+                    .fetch_one(&mut *db)
+                    .await
+                    .map_internal_server_error("Failed to create in database.")?;
+            }
             let resp = PostResponse { id: created.get("id") };
             Ok(APIResponse::new(
                 Status::Created,
@@ -128,6 +169,19 @@ macro_rules! api_patch {
         input: $input:path,
         input_fields: { $($name:ident),+ }
     ) => {
+        crate::api_patch! {
+            model_table: $model_table,
+            input: $input,
+            input_fields: { $($name),+ },
+            query_where: "WHERE id = $1 AND user_id = $2"
+        }
+    };
+    (
+        model_table: $model_table:expr,
+        input: $input:path,
+        input_fields: { $($name:ident),+ },
+        query_where: $query_where:expr
+    ) => {
         #[patch("/<id>", data = "<input>", format = "application/json")]
         async fn patch(
             auth_user: crate::guards::auth::Auth<crate::models::user::UserModel>,
@@ -141,7 +195,7 @@ macro_rules! api_patch {
             let update_str = crate::update_set! {
                 $model_table;
                 $($name: input.$name),+;
-                "WHERE id = $1 AND user_id = $2"
+                $query_where
             };
             if let Some(update_str) = update_str {
                 let result = sqlx::query(&update_str)
@@ -167,6 +221,15 @@ macro_rules! api_delete {
     (
         model_table: $model_table:expr
     ) => {
+        crate::api_delete! {
+            model_table: $model_table,
+            query_where: "WHERE id = $1 AND user_id = $2"
+        }
+    };
+    (
+        model_table: $model_table:expr,
+        query_where: $query_where:expr
+    ) => {
         #[delete("/<id>")]
         async fn delete(
             auth_user: crate::guards::auth::Auth<crate::models::user::UserModel>,
@@ -175,17 +238,18 @@ macro_rules! api_delete {
         ) -> crate::responses::APIResult {
             use crate::responses::{ok, result_not_found, MapAPIResponse};
 
-            static QUERY_STRING: Lazy<String> = Lazy::new(|| {
-                format!(
-                    "DELETE FROM {} WHERE id = $1 AND user_id = $2",
-                    stringify!($model_table)
-                )
-            });
+            println!("api delete 1");
+            static QUERY_STRING: Lazy<String> =
+                Lazy::new(|| format!("DELETE FROM {} {}", $model_table, $query_where));
             let res = sqlx::query(&QUERY_STRING)
                 .bind(id)
                 .bind(auth_user.id)
                 .execute(&mut *db)
                 .await
+                .map_err(|e| {
+                    println!("delete api got err: {}", e);
+                    ()
+                })
                 .map_internal_server_error("Failed to delete in database.")?;
             if res.rows_affected() == 0 {
                 return result_not_found("Item not found.");

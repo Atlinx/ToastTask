@@ -97,7 +97,7 @@ crate::test_crud! {
 
 // TODO NOW: Debug api::lists::parent_child::reparent
 
-crate::test_parent_child! {
+crate::test_tree_crud! {
     model_path: "lists",
     response_type: types::GetListResponse,
     valid_item: json!({

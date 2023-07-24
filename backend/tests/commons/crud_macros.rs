@@ -375,6 +375,7 @@ macro_rules! test_delete {
                 let client = commons::setup().await;
                 let (session_response, item_ids, _) = rud_setup(&client).await;
                 let item_id = item_ids.first().unwrap();
+                println!("delete 1");
                 let confirm_exists_res = client
                     .get(&format!("{}/{}", $model_path, item_id))
                     .bearer_auth(session_response.session_token)
@@ -383,6 +384,7 @@ macro_rules! test_delete {
                     .expect("Expected response");
                 let status = confirm_exists_res.status();
                 assert_eq!(status, StatusCode::OK);
+                println!("delete 2");
                 let res = client
                     .delete(&format!("{}/{}", $model_path, item_id))
                     .bearer_auth(session_response.session_token)
@@ -390,6 +392,7 @@ macro_rules! test_delete {
                     .await
                     .expect("Expected response");
                 assert_eq!(res.status(), StatusCode::OK);
+                println!("delete 3");
                 let confirm_deleted_res = client
                     .get(&format!("{}/{}", $model_path, item_id))
                     .bearer_auth(session_response.session_token)
@@ -397,6 +400,7 @@ macro_rules! test_delete {
                     .await
                     .expect("Expected response");
                 assert_eq!(confirm_deleted_res.status(), StatusCode::NOT_FOUND);
+                println!("delete 4");
             }
         }
     };

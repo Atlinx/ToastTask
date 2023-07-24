@@ -12,9 +12,9 @@ crate::test_delete! {
 }
 
 pub mod types {
-    use chrono::NaiveDateTime;
     use ipnetwork::IpNetwork;
     use serde::{Deserialize, Serialize};
+    use time::PrimitiveDateTime;
     use uuid::Uuid;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -23,8 +23,8 @@ pub mod types {
         pub ip: IpNetwork,
         pub platform: String,
         pub user_agent: String,
-        pub created_at: NaiveDateTime,
-        pub expire_at: NaiveDateTime,
+        pub created_at: PrimitiveDateTime,
+        pub expire_at: PrimitiveDateTime,
         pub user_id: Uuid,
     }
 }

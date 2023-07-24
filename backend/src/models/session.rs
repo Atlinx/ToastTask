@@ -1,7 +1,7 @@
-use chrono::{NaiveDateTime, Utc};
 use ipnetwork::IpNetwork;
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
+use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 
 use crate::{
@@ -18,8 +18,8 @@ pub struct SessionModel {
     pub platform: String,
     pub user_agent: String,
     pub user_id: Uuid,
-    pub created_at: NaiveDateTime,
-    pub expire_at: NaiveDateTime,
+    pub created_at: PrimitiveDateTime,
+    pub expire_at: PrimitiveDateTime,
 }
 
 /// Creates a session in the datatbase and return it's id.
@@ -29,7 +29,8 @@ pub async fn create_session(
     client_info: &ClientInfo,
     user_id: Uuid,
 ) -> Result<Uuid, APIResponse> {
-    let now = Utc::now().naive_utc();
+    let offset_now = OffsetDateTime::now_utc();
+    let now = PrimitiveDateTime::new(offset_now.date(), offset_now.time());
     let created_at = now;
     let expire_at = now + config.session_duration;
     let result = sqlx::query!("INSERT INTO sessions (ip, platform, user_agent, created_at, expire_at, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", client_info.ip, client_info.platform.to_string(), client_info.user_agent, created_at, expire_at, user_id).fetch_one(&mut *db).await.map_internal_server_error("Failed to create session.")?;

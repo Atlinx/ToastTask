@@ -1,8 +1,10 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 pub mod crud_macros;
+pub mod serde;
 pub mod tree_crud_macros;
+pub mod validation;
 
 pub const GET_LIMIT: u32 = 1000;
 
@@ -58,7 +60,7 @@ where
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         match self {
             Self::Missing => serializer.serialize_none(),
@@ -75,16 +77,16 @@ where
 /// and then implement a more specific behaviour for String.
 #[macro_export]
 macro_rules! print_sql {
-    ($e:expr) => {
+    ($e:expr; no_recurse) => {
         spez::spez! {
             for x = $e;
             match String -> String {
                 format!("'{}'", x)
             }
-            match &str -> String {
+            match &String -> String {
                 format!("'{}'", x)
             }
-            match &String -> String {
+            match &str -> String {
                 format!("'{}'", x)
             }
             match &&str -> String {
@@ -96,14 +98,96 @@ macro_rules! print_sql {
             match &Uuid -> String {
                 format!("'{}'", x)
             }
-            match<T: std::fmt::Display> T -> String {
-                format!("{}", x)
+            match<T: std::string::ToString> T -> String {
+                x.to_string()
+            }
+            match<T: std::string::ToString> &T -> String {
+                x.to_string()
             }
             match<T> T -> String {
                 String::from("NULL")
             }
         }
     };
+    ($e:expr) => {
+        spez::spez! {
+            for x = $e;
+            match String -> String {
+                format!("'{}'", x)
+            }
+            match &String -> String {
+                format!("'{}'", x)
+            }
+            match &str -> String {
+                format!("'{}'", x)
+            }
+            match &&str -> String {
+                format!("'{}'", x)
+            }
+            match Uuid -> String {
+                format!("'{}'", x)
+            }
+            match &Uuid -> String {
+                format!("'{}'", x)
+            }
+            match<T: std::string::ToString> &Option<T> -> String {
+                match x {
+                    Some(v) => {
+                        crate::print_sql!(v; no_recurse)
+                    }
+                    None => String::from("NULL")
+                }
+            }
+            match<T: std::string::ToString> Option<T> -> String {
+                match x {
+                    Some(v) => {
+                        crate::print_sql!(v; no_recurse)
+                    }
+                    None => String::from("NULL")
+                }
+            }
+            match<T: std::string::ToString> T -> String {
+                x.to_string()
+            }
+            match<T: std::string::ToString> &T -> String {
+                x.to_string()
+            }
+            match<T> T -> String {
+                String::from("NULL")
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! post_query {
+    ($table:expr; $($name:ident: $value:expr),*; $additional_sql:expr) => {
+        {
+            let mut names = Vec::<&str>::new();
+            let mut values = Vec::<String>::new();
+
+            $(
+                let use_value = spez::spez! {
+                    for x = &$value;
+                    match<T> &Option<T> -> bool {
+                        match x {
+                            Some(_) => true,
+                            None => false
+                        }
+                    }
+                    match<T> &T -> bool {
+                        true
+                    }
+                };
+                if use_value {
+                    names.push(stringify!($name));
+                    values.push(crate::print_sql!($value));
+                }
+            )*
+
+            format!("INSERT INTO {} ({}) VALUES ({}) {}", $table, names.join(", "), values.join(", "), $additional_sql)
+        }
+    }
 }
 
 #[macro_export]

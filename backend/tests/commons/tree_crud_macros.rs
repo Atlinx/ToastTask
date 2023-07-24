@@ -8,14 +8,14 @@
 ///     - children: Vec<Uuid>
 ///     - parent: Option<Uuid>
 #[macro_export]
-macro_rules! test_parent_child {
+macro_rules! test_tree_crud {
     (
         model_path: $model_path:expr,
         response_type: $response_type:path,
         valid_item: $valid_item:expr,
         rud_setup: $rud_setup:path
     ) => {
-        pub mod parent_child {
+        pub mod tree {
             use reqwest::StatusCode;
             use serde_json::json;
             use uuid::Uuid;

@@ -47,14 +47,13 @@ macro_rules! api_tree_get {
             .map_internal_server_error("Error fetching items")?;
 
             let mut items: HashMap<Uuid, GetModel> = HashMap::new();
-
             for row in query {
-                let list = items.entry(row.get("id")).or_insert_with(|| GetModel {
+                let item = items.entry(row.get("id")).or_insert_with(|| GetModel {
                     $($get_field: row.get(stringify!($get_field)),)+
                     child_ids: Vec::new(),
                 });
                 if let Some(child_id) = row.get("child_id") {
-                    list.child_ids.push(child_id);
+                    item.child_ids.push(child_id);
                 }
             }
 
@@ -100,21 +99,21 @@ macro_rules! api_tree_get {
             .await
             .map_internal_server_error("Error fetching items")?;
 
-            let mut maybe_list: Option<GetModel> = None;
+            let mut maybe_item: Option<GetModel> = None;
             for row in query {
-                let list = maybe_list.get_or_insert_with(|| GetModel {
+                let item = maybe_item.get_or_insert_with(|| GetModel {
                     $($get_field: row.get(stringify!($get_field)),)+
                     child_ids: Vec::new(),
                 });
                 if let Some(child_id) = row.get("child_id") {
-                    list.child_ids.push(child_id);
+                    item.child_ids.push(child_id);
                 }
             }
-            let list = maybe_list.ok_or_else(|| not_found("Item not found."))?;
+            let item = maybe_item.ok_or_else(|| not_found("Item not found."))?;
 
             Ok(APIResponse::new(
                 Status::Ok,
-                serde_json::to_value(list)
+                serde_json::to_value(item)
                     .map_internal_server_error("Failed to convert response into json.")?,
             ))
         }

@@ -138,8 +138,8 @@ pub mod delete {
 }
 
 pub mod types {
-    use chrono::NaiveDateTime;
     use serde::{Deserialize, Serialize};
+    use time::PrimitiveDateTime;
     use uuid::Uuid;
 
     use crate::api::sessions::types::GetSessionResponse;
@@ -148,8 +148,8 @@ pub mod types {
     pub struct GetUserResponse {
         id: Uuid,
         username: String,
-        created_at: NaiveDateTime,
-        updated_at: NaiveDateTime,
+        created_at: PrimitiveDateTime,
+        updated_at: PrimitiveDateTime,
         discord_login: Option<GetDiscordUserLoginResponse>,
         email_login: Option<GetEmailUserLoginResponse>,
         sessions: Vec<GetSessionResponse>,

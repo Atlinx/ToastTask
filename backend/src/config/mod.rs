@@ -1,4 +1,3 @@
-use chrono::Duration;
 use rocket::{
     figment::{
         map,
@@ -8,6 +7,7 @@ use rocket::{
     log::LogLevel,
 };
 use std::{env, fmt};
+use time::Duration;
 
 mod dev_config;
 mod prod_config;
@@ -26,7 +26,7 @@ pub struct AppConfig {
     pub database_url: String,
     pub database_pool_size: u32,
     pub password_salt: String,
-    pub session_duration: chrono::Duration,
+    pub session_duration: Duration,
     pub log_level: LogLevel,
 }
 
@@ -44,7 +44,7 @@ impl Default for AppConfig {
             database_url: String::from(""),
             database_pool_size: 10,
             password_salt: String::from("default"),
-            session_duration: chrono::Duration::seconds(10), // TODO: Replace this after testing,
+            session_duration: Duration::seconds(10), // TODO: Replace this after testing,
             log_level: LogLevel::Normal,
         }
     }
