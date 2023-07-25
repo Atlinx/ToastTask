@@ -7,56 +7,76 @@ crate::test_crud! {
         response_type: types::GetListResponse
     },
     post: {
-        valid_item: json!({
-            "title": "Grocery list",
-            "color": "#ffa783",
-        }),
+        valid_item(_client, _session_response) {
+            json!({
+                "title": "Grocery list",
+                "color": "#ffa783",
+            })
+        },
         test_cases: {
-            valid_0: (json!({
-                "title": "Grocery list",
-                "description": "List of groceries for next week's event.",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
-            valid_1: (json!({
-                "title": "Grocery list",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
+            valid_0(_client, _session_response, StatusCode::CREATED) {
+                json!({
+                    "title": "Grocery list",
+                    "description": "List of groceries for next week's event.",
+                    "color": "#ffa783",
+                })
+            },
+            valid_1(_client, _session_response, StatusCode::CREATED) {
+                json!({
+                    "title": "Grocery list",
+                    "color": "#ffa783",
+                })
+            },
 
-            invalid_0: (json!({
-                "title": "Grocery list",
-                "color": true,
-            }), StatusCode::UNPROCESSABLE_ENTITY),
-            invalid_1: (json!({
-                "title": "Grocery list",
-                "color": "sdfsdf",
-            }), StatusCode::BAD_REQUEST),
+            invalid_0(_client, _session_response, StatusCode::UNPROCESSABLE_ENTITY) {
+                json!({
+                    "title": "Grocery list",
+                    "color": true,
+                })
+            },
+            invalid_1(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": "Grocery list",
+                    "color": "sdfsdf",
+                })
+            }
         }
     },
     patch: {
-        valid_changes: json!({
-            "title": "My updated list",
-            "description": "This is an updated list",
-            "color": "#444488",
-        }),
-        test_cases: {
-            valid_0: (json!({
+        valid_changes(_client, _session_response) {
+            json!({
                 "title": "My updated list",
                 "description": "This is an updated list",
                 "color": "#444488",
-            }), StatusCode::OK),
-            valid_1: (json!({
-                "title": "My updated list",
-                "description": null
-            }), StatusCode::OK),
+            })
+        },
+        test_cases: {
+            valid_0(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated list",
+                    "description": "This is an updated list",
+                    "color": "#444488",
+                })
+            },
+            valid_1(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated list",
+                    "description": null
+                })
+            },
 
-            invalid_0: (json!({
-                "color": null,
-            }), StatusCode::BAD_REQUEST),
-            invalid_1: (json!({
-                "title": null,
-                "description": "This is an updated list",
-                "color": "#3849dfa"
-            }), StatusCode::BAD_REQUEST),
+            invalid_0(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "color": null,
+                })
+            },
+            invalid_1(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": null,
+                    "description": "This is an updated list",
+                    "color": "#3849dfa"
+                })
+            }
         }
     },
     default_items: {
@@ -100,10 +120,12 @@ crate::test_crud! {
 crate::test_tree_crud! {
     model_path: "lists",
     response_type: types::GetListResponse,
-    valid_item: json!({
-        "title": "Grocery list",
-        "color": "#ffa783",
-    }),
+    valid_item(_client, _session_response) {
+        json!({
+            "title": "Grocery list",
+            "color": "#ffa783",
+        })
+    },
     rud_setup: utils::rud_setup
 }
 

@@ -180,21 +180,27 @@ macro_rules! test_get {
 macro_rules! test_post {
     (
         model_path: $model_path:expr,
-        valid_item: $valid_item:expr,
-        test_cases: { $($test_case_name:ident: $test_case_input:expr,)* }
+        valid_item($valid_item_arg_client:ident, $valid_item_arg_session_response:ident) $vaild_item_body:expr,
+        test_cases: { $($test_case_name:ident($test_case_arg_client:ident, $test_case_arg_session_response:ident, $test_case_status:expr) $test_case_body:expr),* }
     ) => {
         pub mod post {
             use crate::{api::auth::email::utils::email_register_and_login_user_default, commons};
+            use crate::commons::http_client::HttpClient;
+            use crate::api::auth::email::utils::SessionResponse;
             use reqwest::StatusCode;
             use serde_json::json;
 
             #[rocket::async_test]
             async fn post_unauth() {
                 let client = commons::setup().await;
-                let _ = email_register_and_login_user_default(&client).await;
+                let (session_response, _) = email_register_and_login_user_default(&client).await;
+                async fn setup_json($valid_item_arg_client: &HttpClient, $valid_item_arg_session_response: &SessionResponse) -> serde_json::Value {
+                    $vaild_item_body
+                }
+                let valid_item = setup_json(&client, &session_response).await;
                 let res = client
                     .post($model_path)
-                    .json(&$valid_item)
+                    .json(&valid_item)
                     .send()
                     .await
                     .expect("Expected response");
@@ -204,21 +210,28 @@ macro_rules! test_post {
             pub mod test_case {
                 use crate::{
                     api::{
-                        auth::email::utils::email_register_and_login_user_default}, 
-                        commons::{
-                            self,
-                            utils::rest::PostResponse
-                        }
-                    };
+                        auth::email::utils::email_register_and_login_user_default
+                    }, 
+                    commons::{
+                        self,
+                        utils::rest::PostResponse
+                    }
+                };
                 use reqwest::StatusCode;
                 use serde_json::json;
+                use crate::commons::http_client::HttpClient;
+                use crate::api::auth::email::utils::SessionResponse;
 
                 $(
                     #[rocket::async_test]
                     async fn $test_case_name() {
-                        let (json, status) = $test_case_input;
                         let client = commons::setup().await;
                         let (session_response, _) = email_register_and_login_user_default(&client).await;
+                        async fn setup_json($test_case_arg_client: &HttpClient, $test_case_arg_session_response: &SessionResponse) -> serde_json::Value {
+                            $test_case_body
+                        }
+                        let status = $test_case_status;
+                        let json = setup_json(&client, &session_response).await;
                         let res = client
                             .post($model_path)
                             .bearer_auth(session_response.session_token)
@@ -243,26 +256,32 @@ macro_rules! test_post {
 macro_rules! test_patch {
     (
         model_path: $model_path:expr,
-        valid_changes: $valid_changes:expr,
-        test_cases: { $($test_case_name:ident: $test_case_input:expr,)* },
+        valid_changes($valid_changes_arg_client:ident, $valid_changes_arg_session_response:ident) $valid_changes_body:expr,
+        test_cases: { $($test_case_name:ident($test_case_arg_client:ident, $test_case_arg_session_response:ident, $test_case_status:expr) $test_case_body:expr),* }
         rud_setup: $rud_setup:path
     ) => {
         pub mod patch {
             use reqwest::StatusCode;
             use serde_json::json;
             use uuid::Uuid;
-
-            use super::{$rud_setup};
+            
+            use super::{$rud_setup as rud_setup};
             use crate::commons;
+            use crate::commons::http_client::HttpClient;
+            use crate::api::auth::email::utils::SessionResponse;
 
             #[rocket::async_test]
             async fn patch_unauth() {
                 let client = commons::setup().await;
-                let (_, item_ids, _) = rud_setup(&client).await;
-                let item_id = item_ids.first().unwrap();
+                let (session_response, item_ids, _) = rud_setup(&client).await;
+                async fn setup_json($valid_changes_arg_client: &HttpClient, $valid_changes_arg_session_response: &SessionResponse) -> serde_json::Value {
+                    $valid_changes_body
+                }
+                let valid_changes = setup_json(&client, &session_response).await;
+                let item_id = item_ids.first().unwrap();                
                 let res = client
                     .patch(&format!("{}/{}", $model_path, item_id))
-                    .json(&$valid_changes)
+                    .json(&valid_changes)
                     .send()
                     .await
                     .expect("Expected response");
@@ -273,10 +292,14 @@ macro_rules! test_patch {
             async fn patch_missing() {
                 let client = commons::setup().await;
                 let (session_response, _, _) = rud_setup(&client).await;
+                async fn setup_json($valid_changes_arg_client: &HttpClient, $valid_changes_arg_session_response: &SessionResponse) -> serde_json::Value {
+                    $valid_changes_body
+                }
+                let valid_changes = setup_json(&client, &session_response).await;
                 let res = client
                     .patch(&format!("{}/{}", $model_path, Uuid::new_v4()))
                     .bearer_auth(session_response.session_token)
-                    .json(&$valid_changes)
+                    .json(&valid_changes)
                     .send()
                     .await
                     .expect("Expected response");
@@ -288,16 +311,22 @@ macro_rules! test_patch {
                 use serde_json::{json, Value};
 
                 use assert_json_diff::assert_json_include;
-                use super::super::{$rud_setup};
+                use super::super::{$rud_setup as rud_setup};
                 use crate::commons;
+                use crate::commons::http_client::HttpClient;
+                use crate::api::auth::email::utils::SessionResponse;
 
                 $(
                     #[rocket::async_test]
                     async fn $test_case_name() {
-                        let (changes, status) = $test_case_input;
                         let client = commons::setup().await;
                         let (session_response, item_ids, _) = rud_setup(&client).await;
                         let item_id = item_ids.first().unwrap();
+                        async fn setup_json($test_case_arg_client: &HttpClient, $test_case_arg_session_response: &SessionResponse) -> serde_json::Value {
+                            $test_case_body
+                        }
+                        let changes = setup_json(&client, &session_response).await;
+                        let status = $test_case_status;
                         let res = client
                             .patch(&format!("{}/{}", $model_path, item_id))
                             .json(&changes)
@@ -417,28 +446,28 @@ macro_rules! test_crud {
             response_type: $get_response_type:path
         },
         post: {
-            valid_item: $post_valid_item:expr,
-            test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
+            valid_item($post_valid_item_arg_client:ident, $post_valid_item_arg_session_response:ident) $post_vaild_item_body:expr,
+            test_cases: { $($post_test_case_name:ident($post_test_case_arg_client:ident, $post_test_case_arg_session_response:ident, $post_test_case_status:expr) $post_test_case_body:expr),* }
         },
         patch: {
-            valid_changes: $patch_valid_changes:expr,
-            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
+            valid_changes($patch_valid_changes_arg_client:ident, $patch_valid_changes_arg_session_response:ident) $patch_valid_changes_body:expr,
+            test_cases: { $($patch_test_case_name:ident($patch_test_case_arg_client:ident, $patch_test_case_arg_session_response:ident, $patch_test_case_status:expr) $patch_test_case_body:expr),* }
         }
     ) => {
-        crate::test_post!(
-            model_path: $model_path,
-            valid_item: $post_valid_item,
-            test_cases: {$($post_test_case_name: $post_test_case_input,)* }
-        );
         crate::test_get!(
             model_path: $model_path,
             response_type: $get_response_type,
             rud_setup: $rud_setup
         );
+        crate::test_post!(
+            model_path: $model_path,
+            valid_item($post_valid_item_arg_client, $post_valid_item_arg_session_response) $post_vaild_item_body,
+            test_cases: { $($post_test_case_name($post_test_case_arg_client, $post_test_case_arg_session_response, $post_test_case_status) $post_test_case_body),* }
+        );
         crate::test_patch!(
             model_path: $model_path,
-            valid_changes: $patch_valid_changes,
-            test_cases: {$($patch_test_case_name: $patch_test_case_input,)*},
+            valid_changes($patch_valid_changes_arg_client, $patch_valid_changes_arg_session_response) $patch_valid_changes_body,
+            test_cases: { $($patch_test_case_name($patch_test_case_arg_client, $patch_test_case_arg_session_response, $patch_test_case_status) $patch_test_case_body),* }
             rud_setup: $rud_setup
         );
         crate::test_delete!(
@@ -453,12 +482,12 @@ macro_rules! test_crud {
             response_type: $get_response_type:path
         },
         post: {
-            valid_item: $post_valid_item:expr,
-            test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
+            valid_item($post_valid_item_arg_client:ident, $post_valid_item_arg_session_response:ident) $post_vaild_item_body:expr,
+            test_cases: { $($post_test_case_name:ident($post_test_case_arg_client:ident, $post_test_case_arg_session_response:ident, $post_test_case_status:expr) $post_test_case_body:expr),* }
         },
         patch: {
-            valid_changes: $patch_valid_changes:expr,
-            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
+            valid_changes($patch_valid_changes_arg_client:ident, $patch_valid_changes_arg_session_response:ident) $patch_valid_changes_body:expr,
+            test_cases: { $($patch_test_case_name:ident($patch_test_case_arg_client:ident, $patch_test_case_arg_session_response:ident, $patch_test_case_status:expr) $patch_test_case_body:expr),* }
         },
         default_items: { $($default_item:expr),+ }
     ) => {
@@ -469,12 +498,12 @@ macro_rules! test_crud {
                 response_type: $get_response_type
             },
             post: {
-                valid_item: $post_valid_item,
-                test_cases: { $($post_test_case_name: $post_test_case_input,)* }
+                valid_item($post_valid_item_arg_client, $post_valid_item_arg_session_response) $post_vaild_item_body,
+                test_cases: { $($post_test_case_name($post_test_case_arg_client, $post_test_case_arg_session_response, $post_test_case_status) $post_test_case_body),* }
             },
             patch: {
-                valid_changes: $patch_valid_changes,
-                test_cases: { $($patch_test_case_name: $patch_test_case_input,)* }
+                valid_changes($patch_valid_changes_arg_client, $patch_valid_changes_arg_session_response) $patch_valid_changes_body,
+                test_cases: { $($patch_test_case_name($patch_test_case_arg_client, $patch_test_case_arg_session_response, $patch_test_case_status) $patch_test_case_body),* }
             }
         }
         crate::test_crud_utils! {
@@ -490,15 +519,15 @@ macro_rules! test_crud {
             response_type: $get_response_type:path
         },
         post: {
-            valid_item: $post_valid_item:expr,
-            test_cases: { $($post_test_case_name:ident: $post_test_case_input:expr,)* }
+            valid_item($post_valid_item_arg_client:ident, $post_valid_item_arg_session_response:ident) $post_vaild_item_body:expr,
+            test_cases: { $($post_test_case_name:ident($post_test_case_arg_client:ident, $post_test_case_arg_session_response:ident, $post_test_case_status:expr) $post_test_case_body:expr),* }
         },
         patch: {
-            valid_changes: $patch_valid_changes:expr,
-            test_cases: { $($patch_test_case_name:ident: $patch_test_case_input:expr,)* }
+            valid_changes($patch_valid_changes_arg_client:ident, $patch_valid_changes_arg_session_response:ident) $patch_valid_changes_body:expr,
+            test_cases: { $($patch_test_case_name:ident($patch_test_case_arg_client:ident, $patch_test_case_arg_session_response:ident, $patch_test_case_status:expr) $patch_test_case_body:expr),* }
         },
         default_items: { $($default_item:expr),+ },
-        setup_items_fn: $setup_items_fn:path
+        rud_setup_items($client:ident, $session_response:ident, $templates:ident ) $rud_setup_items:expr
     ) => {
         crate::test_crud! {
             model_path: $model_path,
@@ -507,18 +536,18 @@ macro_rules! test_crud {
                 response_type: $get_response_type
             },
             post: {
-                valid_item: $post_valid_item,
-                test_cases: { $($post_test_case_name: $post_test_case_input,)* }
+                valid_item ($post_valid_item_arg_client, $post_valid_item_arg_session_response) $post_vaild_item_body,
+                test_cases: { $($post_test_case_name($post_test_case_arg_client, $post_test_case_arg_session_response, $post_test_case_status) $post_test_case_body),* }
             },
             patch: {
-                valid_changes: $patch_valid_changes,
-                test_cases: { $($patch_test_case_name: $patch_test_case_input,)* }
+                valid_changes($patch_valid_changes_arg_client, $patch_valid_changes_arg_session_response) $patch_valid_changes_body,
+                test_cases: { $($patch_test_case_name($patch_test_case_arg_client, $patch_test_case_arg_session_response, $patch_test_case_status) $patch_test_case_body),* }
             }
         }
         crate::test_crud_utils! {
             model_plural: $model_plural,
             default_items: { $($default_item),+ },
-            setup_items_fn: $setup_items_fn
+            rud_setup_items($client, $session_response, $templates) $rud_setup_items
         }
     };
 }
@@ -533,26 +562,10 @@ macro_rules! test_crud_utils {
         crate::test_crud_utils! {
             model_plural: $model_plural,
             default_items: { $($default_item),+ },
-            setup_items_fn: default_utils::setup_items
-        }
-        
-        mod default_utils {
-            use serde_json::Value;
-            use reqwest::StatusCode;
-            use crate::{
-                api::auth::email::utils::SessionResponse,
-                commons::{
-                    http_client::HttpClient,
-                    utils::rest::PostResponse
-                }
-            };
-            use uuid::Uuid;
-
-            pub async fn setup_items(
-                client: &HttpClient, 
-                session_response: &SessionResponse, 
-                templates: &Vec<Value>
-            ) -> (Vec<Uuid>, Vec<Value>){
+            rud_setup_items(client, session_response, templates) {
+                use crate::commons::utils::rest::PostResponse;
+                use reqwest::StatusCode;
+                
                 let mut uuid_vec = Vec::<Uuid>::new();
                 let mut value_vec = Vec::<Value>::new();
                 for template in templates {
@@ -573,13 +586,13 @@ macro_rules! test_crud_utils {
                     value_vec.push(req);
                 }
                 (uuid_vec, value_vec)
-            }            
+            }
         }
     };
     (
         model_plural: $model_plural:ident,
         default_items: { $($default_item:expr),+ },
-        setup_items_fn: $setup_items_fn:path
+        rud_setup_items($client:ident, $session_response:ident, $templates:ident ) $rud_setup_items:expr
     ) => {
         paste::paste!{
             pub mod utils {
@@ -626,13 +639,11 @@ macro_rules! test_crud_utils {
                 }
 
                 pub async fn [<setup_ $model_plural>](
-                    client: &HttpClient,
-                    session_response: &SessionResponse,
-                    templates: &Vec<Value>,
+                    $client: &HttpClient, 
+                    $session_response: &SessionResponse, 
+                    $templates: &Vec<Value>
                 ) -> (Vec<Uuid>, Vec<Value>) {
-                    use super::{$setup_items_fn as setup_items};
-
-                    setup_items(client, session_response, templates).await
+                    $rud_setup_items
                 }
             }
         }

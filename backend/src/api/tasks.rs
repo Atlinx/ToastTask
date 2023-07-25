@@ -112,7 +112,7 @@ async fn get_all(
 
 #[get("/<id>")]
 async fn get_single(
-    _auth_user: Auth<UserModel>,
+    auth_user: Auth<UserModel>,
     mut db: Connection<BackendDb>,
     id: Uuid,
 ) -> APIResult {
@@ -123,14 +123,17 @@ async fn get_single(
             child_tasks.id AS "child_id?",
             task_labels.label_id as "label_id?"
             FROM (
-                SELECT * FROM tasks
-                WHERE id = $1
+                SELECT tasks.* FROM tasks
+                    INNER JOIN lists
+                    ON lists.id = tasks.list_id
+                WHERE tasks.id = $1 AND user_id = $2
             ) base_tasks
             LEFT JOIN tasks child_tasks 
                 ON base_tasks.id = child_tasks.parent_id
             LEFT JOIN task_labels 
                 ON base_tasks.id = task_labels.task_id"#,
-        id
+        id,
+        auth_user.id
     )
     .fetch_all(&mut *db)
     .await
@@ -174,6 +177,10 @@ async fn get_single(
             .map_internal_server_error("Failed to convert response into json.")?,
     ))
 }
+
+// TODO NOW: Add this
+#[get("/<id>")]/
+async fn add_label(auth_user: Auth<UserModel>, mut db: Connection<BackendDb>, id: Uuid) {}
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct PatchInput {

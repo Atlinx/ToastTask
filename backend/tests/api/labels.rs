@@ -7,56 +7,76 @@ crate::test_crud! {
         response_type: types::GetLabelResponse
     },
     post: {
-        valid_item: json!({
-            "title": "Important",
-            "color": "#ffa783",
-        }),
+        valid_item(_client, _session_response) {
+            json!({
+                "title": "Important",
+                "color": "#ffa783",
+            })
+        },
         test_cases: {
-            valid_0: (json!({
-                "title": "Important",
-                "description": "Tasks that need to be done quickly.",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
-            valid_1: (json!({
-                "title": "Important",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
+            valid_0(_client, _session_response, StatusCode::CREATED) {
+                json!({
+                    "title": "Important",
+                    "description": "Tasks that need to be done quickly.",
+                    "color": "#ffa783",
+                })
+            },
+            valid_1(_client, _session_response, StatusCode::CREATED) {
+                json!({
+                    "title": "Important",
+                    "color": "#ffa783",
+                })
+            },
 
-            invalid_0: (json!({
-                "title": "Important",
-                "color": true,
-            }), StatusCode::UNPROCESSABLE_ENTITY),
-            invalid_1: (json!({
-                "title": "Important",
-                "color": "sdfsdf",
-            }), StatusCode::BAD_REQUEST),
+            invalid_0(_client, _session_response, StatusCode::UNPROCESSABLE_ENTITY) {
+                json!({
+                    "title": "Important",
+                    "color": true,
+                })
+            },
+            invalid_1(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": "Important",
+                    "color": "sdfsdf",
+                })
+            }
         }
     },
     patch: {
-        valid_changes: json!({
-            "title": "My updated label",
-            "description": "This is an updated label",
-            "color": "#444488",
-        }),
-        test_cases: {
-            valid_0: (json!({
+        valid_changes(_client, _session_response) {
+            json!({
                 "title": "My updated label",
                 "description": "This is an updated label",
                 "color": "#444488",
-            }), StatusCode::OK),
-            valid_1: (json!({
-                "title": "My updated list",
-                "description": null
-            }), StatusCode::OK),
+            })
+        },
+        test_cases: {
+            valid_0(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated label",
+                    "description": "This is an updated label",
+                    "color": "#444488",
+                })
+            },
+            valid_1(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated list",
+                    "description": null
+                })
+            },
 
-            invalid_0: (json!({
-                "color": null,
-            }), StatusCode::BAD_REQUEST),
-            invalid_1: (json!({
-                "title": null,
-                "description": "This is an updated label",
-                "color": "#3849dfa"
-            }), StatusCode::BAD_REQUEST),
+            invalid_0(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "color": null,
+                })
+            },
+            invalid_1(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": null,
+                    "description": "This is an updated label",
+                    "color": "#3849dfa"
+                })
+            }
         }
     },
     default_items: {

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serializer};
-use time::{format_description::well_known::Iso8601, OffsetDateTime, PrimitiveDateTime};
+use time::{format_description::well_known::Iso8601, PrimitiveDateTime};
 
 pub fn string_serialize<T, S>(x: &T, s: S) -> Result<S::Ok, S::Error>
 where

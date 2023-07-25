@@ -12,7 +12,7 @@ macro_rules! test_tree_crud {
     (
         model_path: $model_path:expr,
         response_type: $response_type:path,
-        valid_item: $valid_item:expr,
+        valid_item($valid_item_arg_client:ident, $valid_item_arg_session_response:ident) $vaild_item_body:expr,
         rud_setup: $rud_setup:path
     ) => {
         pub mod tree {
@@ -22,6 +22,8 @@ macro_rules! test_tree_crud {
 
             use super::{$rud_setup as rud_setup};
             use crate::commons::{self, utils::rest::PostResponse};
+            use crate::commons::http_client::HttpClient;
+            use crate::api::auth::email::utils::SessionResponse;
 
             #[rocket::async_test]
             pub async fn post_with_parent() {
@@ -30,8 +32,13 @@ macro_rules! test_tree_crud {
 
                 utils::assert_detached(&client, &session_response, item_ids[0]).await;
 
-                let mut post_input = $valid_item;
+                async fn setup_json($valid_item_arg_client: &HttpClient, $valid_item_arg_session_response: &SessionResponse) -> serde_json::Value {
+                    $vaild_item_body
+                }
+
+                let mut post_input = setup_json(&client, &session_response).await;
                 post_input["parent_id"] = serde_json::to_value(item_ids[0]).unwrap();
+                println!("Post parent with {:#?} to path {}", post_input, $model_path);
                 let res = client
                     .post($model_path)
                     .json(&post_input)

@@ -1,4 +1,6 @@
 use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 pub mod crud_macros;
@@ -70,6 +72,30 @@ where
     }
 }
 
+pub fn escape_sql_string(string: &str) -> String {
+    let mut final_str = String::from("E'");
+    static ESCAPED_CHARS_MAP: Lazy<HashMap<char, &str>> = Lazy::new(|| {
+        HashMap::from([
+            ('\\', r#"\\"#),
+            ('\'', r#"\'"#),
+            ('"', r#"\""#),
+            ('\n', r#"\n"#),
+            ('\t', r#"\t"#),
+            ('\r', r#"\r"#),
+        ])
+    });
+
+    for c in string.chars() {
+        if let Some(escape_str) = ESCAPED_CHARS_MAP.get(&c) {
+            final_str += escape_str;
+        } else {
+            final_str.push(c);
+        }
+    }
+    final_str.push('\'');
+    final_str
+}
+
 /// Macro to print any value in SQL.
 ///
 /// This had to be a macro because rust doesn't support specialization yet,
@@ -77,72 +103,72 @@ where
 /// and then implement a more specific behaviour for String.
 #[macro_export]
 macro_rules! print_sql {
-    ($e:expr; no_recurse) => {
-        spez::spez! {
-            for x = $e;
-            match String -> String {
-                format!("'{}'", x)
-            }
-            match &String -> String {
-                format!("'{}'", x)
-            }
-            match &str -> String {
-                format!("'{}'", x)
-            }
-            match &&str -> String {
-                format!("'{}'", x)
-            }
-            match Uuid -> String {
-                format!("'{}'", x)
-            }
-            match &Uuid -> String {
-                format!("'{}'", x)
-            }
-            match<T: std::string::ToString> T -> String {
-                x.to_string()
-            }
-            match<T: std::string::ToString> &T -> String {
-                x.to_string()
-            }
-            match<T> T -> String {
-                String::from("NULL")
-            }
-        }
-    };
     ($e:expr) => {
         spez::spez! {
             for x = $e;
             match String -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(&x)
             }
             match &String -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(x)
             }
             match &str -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(x)
             }
             match &&str -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(*x)
             }
             match Uuid -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(&x.to_string())
             }
             match &Uuid -> String {
-                format!("'{}'", x)
+                crate::api::utils::escape_sql_string(&x.to_string())
+            }
+            match &Option<String> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(&v),
+                    None => String::from("NULL")
+                }
+            }
+            match Option<String> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(&v),
+                    None => String::from("NULL")
+                }
+            }
+            match &Option<&str> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(v),
+                    None => String::from("NULL")
+                }
+            }
+            match Option<&str> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(v),
+                    None => String::from("NULL")
+                }
+            }
+            match &Option<Uuid> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(&v.to_string()),
+                    None => String::from("NULL")
+                }
+            }
+            match Option<Uuid> -> String {
+                match x {
+                    Some(v) => crate::api::utils::escape_sql_string(&v.to_string()),
+                    None => String::from("NULL")
+                }
             }
             match<T: std::string::ToString> &Option<T> -> String {
                 match x {
-                    Some(v) => {
-                        crate::print_sql!(v; no_recurse)
-                    }
+                    Some(v) => v.to_string(),
                     None => String::from("NULL")
                 }
             }
             match<T: std::string::ToString> Option<T> -> String {
                 match x {
-                    Some(v) => {
-                        crate::print_sql!(v; no_recurse)
-                    }
+                    Some(v) => v.to_string(),
                     None => String::from("NULL")
                 }
             }

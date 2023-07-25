@@ -7,58 +7,86 @@ crate::test_crud! {
         response_type: types::GetTaskResponse
     },
     post: {
-        valid_item: json!({
-            "title": "Get groceries task",
-            "color": "#ffa783",
-        }),
+        valid_item(_client, _session_response) {
+            json!({
+                "title": "Get groceries task",
+                "due_at": "2023-10-19T10:23:00.000000000Z",
+                "due_text": "Next Monday"
+            })
+        },
         test_cases: {
-            valid_0: (json!({
-                "title": "Get groceries task",
-                "description": "Task for getting groceries for next week's event.",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
-            valid_1: (json!({
-                "title": "Get groceries task",
-                "color": "#ffa783",
-            }), StatusCode::CREATED),
+            valid_0(client, session_response, StatusCode::CREATED) {
+                use crate::api::lists::utils::setup_lists_default;
+                let (list_ids, _) = setup_lists_default(client, session_response).await;
+                json!({
+                    "list_id": list_ids[0],
+                    "title": "Get groceries task",
+                    "description": "Task for getting groceries for next week's event.",
+                    "due_at": "2023-10-19T10:23:00.000000000Z",
+                    "due_text": "Next Monday"
+                })
+            },
+            valid_1(client, session_response, StatusCode::CREATED) {
+                use crate::api::lists::utils::setup_lists_default;
+                let (list_ids, _) = setup_lists_default(client, session_response).await;
+                json!({
+                    "list_id": list_ids[0],
+                    "title": "Get groceries task",
+                    "due_at": "2023-10-19T10:23:00.000000000Z",
+                    "due_text": "Next Monday"
+                })
+            },
 
-            invalid_0: (json!({
-                "title": "Get groceries task",
-                "color": true,
-            }), StatusCode::UNPROCESSABLE_ENTITY),
-            invalid_1: (json!({
-                "title": "Get groceries task",
-                "color": "sdfsdf",
-            }), StatusCode::BAD_REQUEST),
+            invalid_0(client, session_response, StatusCode::UNPROCESSABLE_ENTITY) {
+                use crate::api::lists::utils::setup_lists_default;
+                let (list_ids, _) = setup_lists_default(client, session_response).await;
+                json!({
+                    "id": list_ids[0],
+                    "title": "Get groceries task",
+                    "description": true,
+                })
+            },
+            invalid_1(_client, _session_response, StatusCode::UNPROCESSABLE_ENTITY) {
+                json!({})
+            }
         }
     },
     patch: {
-        valid_changes: json!({
-            "title": "My updated task",
-            "description": "This is an updated task",
-            "due_at": "2023-10-19T10:23:00.000000000Z",
-            "due_text": "Next Monday",
-            "color": "#444488",
-        }),
-        test_cases: {
-            valid_0: (json!({
+        valid_changes(_client, _session_response) {
+            json!({
                 "title": "My updated task",
-                "description": "This is an updated list",
-                "color": "#444488",
-            }), StatusCode::OK),
-            valid_1: (json!({
-                "title": "My updated task",
-                "description": null
-            }), StatusCode::OK),
-
-            invalid_0: (json!({
-                "color": null,
-            }), StatusCode::BAD_REQUEST),
-            invalid_1: (json!({
-                "title": null,
                 "description": "This is an updated task",
-                "color": "#3849dfa"
-            }), StatusCode::BAD_REQUEST),
+                "due_at": "2023-10-19T10:23:00.000000000Z",
+                "due_text": "Next Monday"
+            })
+        },
+        test_cases: {
+            valid_0(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated task",
+                    "description": "This is an updated list",
+                    "due_at": "2023-10-19T10:23:00.000000000Z",
+                    "due_text": "Next Monday"
+                })
+            },
+            valid_1(_client, _session_response, StatusCode::OK) {
+                json!({
+                    "title": "My updated task",
+                    "description": null,
+                    "due_at": "2023-10-19T10:23:00.000000000Z",
+                    "due_text": "Next Monday"
+                })
+            },
+
+            invalid_0(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({})
+            },
+            invalid_1(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": null,
+                    "description": "This is an updated task"
+                })
+            }
         }
     },
     default_items: {
@@ -102,16 +130,53 @@ crate::test_crud! {
             "title": "Prepare birthday gift"
         })
     },
-    setup_items_fn: custom_utils::setup_tasks
+    rud_setup_items(client, session_response, templates) {
+        use crate::api::lists::utils::setup_lists_default;
+        use crate::commons::utils::rest::PostResponse;
+        use reqwest::StatusCode;
+
+        let (list_ids, _) = setup_lists_default(client, session_response).await;
+        let mut uuid_vec = Vec::<Uuid>::new();
+        let mut value_vec = Vec::<Value>::new();
+        for list_id in list_ids {
+            for template in templates {
+                let mut req = template.clone();
+                req["list_id"] = Value::from(list_id.to_string());
+                let res = client
+                    .post("tasks")
+                    .bearer_auth(session_response.session_token)
+                    .json(&req)
+                    .send()
+                    .await
+                    .expect("Expected response");
+                assert_eq!(res.status(), StatusCode::CREATED);
+                let response = res
+                    .json::<PostResponse>()
+                    .await
+                    .expect("Expected correct json response");
+                uuid_vec.push(response.id);
+                value_vec.push(req);
+            }
+        }
+        (uuid_vec, value_vec)
+    }
 }
 
 crate::test_tree_crud! {
     model_path: "tasks",
     response_type: types::GetTaskResponse,
-    valid_item: json!({
-        "title": "Get groceries task",
-        "color": "#ffa783",
-    }),
+    valid_item(client, session_response) {
+        use crate::api::lists::utils::setup_lists_default;
+        let (list_ids, _) = setup_lists_default(client, session_response).await;
+
+        json!({
+            "list_id": list_ids[0],
+            "title": "Get groceries task",
+            "description": "Get groceries task",
+            "due_at": "2023-10-19T10:23:00.000000000Z",
+            "due_text": "Next Monday"
+        })
+    },
     rud_setup: utils::rud_setup
 }
 
@@ -149,48 +214,6 @@ pub mod types {
         pub description: Option<String>,
         pub child_ids: Vec<Uuid>,
         pub label_ids: Vec<Uuid>,
-    }
-}
-
-pub mod custom_utils {
-    use reqwest::StatusCode;
-    use serde_json::Value;
-    use uuid::Uuid;
-
-    use crate::{
-        api::{auth::email::utils::SessionResponse, lists::utils::setup_lists_default},
-        commons::{http_client::HttpClient, utils::rest::PostResponse},
-    };
-
-    pub async fn setup_tasks(
-        client: &HttpClient,
-        session_response: &SessionResponse,
-        templates: &Vec<Value>,
-    ) -> (Vec<Uuid>, Vec<Value>) {
-        let (list_ids, _) = setup_lists_default(client, session_response).await;
-        let mut uuid_vec = Vec::<Uuid>::new();
-        let mut value_vec = Vec::<Value>::new();
-        for list_id in list_ids {
-            for template in templates {
-                let mut req = template.clone();
-                req["list_id"] = Value::from(list_id.to_string());
-                let res = client
-                    .post("tasks")
-                    .bearer_auth(session_response.session_token)
-                    .json(&req)
-                    .send()
-                    .await
-                    .expect("Expected response");
-                assert_eq!(res.status(), StatusCode::CREATED);
-                let response = res
-                    .json::<PostResponse>()
-                    .await
-                    .expect("Expected correct json response");
-                uuid_vec.push(response.id);
-                value_vec.push(req);
-            }
-        }
-        (uuid_vec, value_vec)
     }
 }
 
@@ -283,13 +306,16 @@ pub mod lists {
 }
 
 pub mod labels {
-    use super::{tree::utils::get_item, utils::setup_tasks_default};
+    use super::utils::setup_tasks_default;
     use crate::{
         api::{
             auth::email::utils::email_register_and_login_user_default,
-            labels::utils::setup_labels_default,
+            labels::utils::setup_labels_default, tasks::types::GetTaskResponse,
         },
-        commons::{self},
+        commons::{
+            self,
+            http_client::{APIClient, APIRequestBuilder},
+        },
     };
 
     #[rocket::async_test]
@@ -297,22 +323,30 @@ pub mod labels {
         let client = commons::setup().await;
         let (session_response, _) = email_register_and_login_user_default(&client).await;
 
+        println!("change_labels");
+        println!("  1");
         let (task_ids, _) = setup_tasks_default(&client, &session_response).await;
         let (label_ids, _) = setup_labels_default(&client, &session_response).await;
 
+        println!("  2");
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
+        println!("  3");
         utils::add_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::add_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
+        println!("  4");
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
+        println!("  5");
         utils::delete_label(&client, &session_response, task_ids[0], label_ids[1]).await;
 
+        println!("  6");
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[2]).await;
+        println!("  7");
     }
 
     #[rocket::async_test]
@@ -323,7 +357,12 @@ pub mod labels {
         let (task_ids, _) = setup_tasks_default(&client, &session_response).await;
         let (label_ids, _) = setup_labels_default(&client, &session_response).await;
 
-        let item = get_item(&client, &session_response, task_ids[0]).await;
+        let item = client
+            .api()
+            .path("tasks")
+            .auth(&session_response)
+            .get::<GetTaskResponse>(task_ids[0])
+            .await;
         assert!(
             utils::set_eq(&item.child_ids, &vec![]),
             "Expected child_ids to have no labels"
@@ -349,8 +388,10 @@ pub mod labels {
         use std::{collections::HashSet, hash::Hash};
         use uuid::Uuid;
 
-        use super::super::tree::utils::get_item;
-        use crate::{api::auth::email::utils::SessionResponse, commons::http_client::HttpClient};
+        use crate::{
+            api::{auth::email::utils::SessionResponse, tasks::types::GetTaskResponse},
+            commons::http_client::{APIClient, APIRequestBuilder, HttpClient},
+        };
 
         pub fn set_eq<T>(a: &[T], b: &[T]) -> bool
         where
@@ -401,7 +442,12 @@ pub mod labels {
             task_id: Uuid,
             label_id: Uuid,
         ) {
-            let res = get_item(client, session_response, task_id).await;
+            let res = client
+                .api()
+                .path("tasks")
+                .auth(session_response)
+                .get::<GetTaskResponse>(task_id)
+                .await;
             assert!(
                 !res.label_ids.contains(&label_id),
                 "Expected task not to have label: {}",
@@ -415,7 +461,12 @@ pub mod labels {
             task_id: Uuid,
             label_id: Uuid,
         ) {
-            let res = get_item(client, session_response, task_id).await;
+            let res = client
+                .api()
+                .path("tasks")
+                .auth(session_response)
+                .get::<GetTaskResponse>(task_id)
+                .await;
             assert!(
                 res.label_ids.contains(&label_id),
                 "Expected task to have label: {}",
