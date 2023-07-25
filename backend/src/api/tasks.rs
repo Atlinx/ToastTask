@@ -20,7 +20,7 @@ crate::api_delete! {
 }
 
 use once_cell::sync::Lazy;
-use rocket::{http::Status, Build, Rocket};
+use rocket::{http::Status, serde::json::Json, Build, Rocket};
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -33,7 +33,10 @@ use crate::{
     database::BackendDb,
     guards::auth::Auth,
     models::user::UserModel,
-    responses::{internal_server_error, not_found, APIResponse, APIResult, MapAPIResponse},
+    responses::{
+        internal_server_error, not_found, ok, result_not_found, APIResponse, APIResult,
+        MapAPIResponse,
+    },
 };
 
 use super::utils::Patch;
@@ -179,8 +182,49 @@ async fn get_single(
 }
 
 // TODO NOW: Add this
-#[get("/<id>")]/
-async fn add_label(auth_user: Auth<UserModel>, mut db: Connection<BackendDb>, id: Uuid) {}
+#[post("/<id>/labels", data = "<input>", format = "application/json")]
+async fn post_label(
+    auth_user: Auth<UserModel>,
+    input: Json<LabelPostInput>,
+    mut db: Connection<BackendDb>,
+    id: Uuid,
+) -> APIResult {
+    let res = sqlx::query!(
+        "SELECT tasks.id, lists.user_id FROM tasks 
+            INNER JOIN lists ON tasks.list_id = lists.id
+            WHERE tasks.id = $1 AND lists.user_id = $2
+    ",
+        id,
+        auth_user.id
+    )
+    .fetch_optional(&mut *db)
+    .await
+    .map_internal_server_error("Failed to fetch task from database.")?;
+
+    if let None = res {
+        return result_not_found("Task not found");
+    }
+
+    sqlx::query!(
+        "INSERT INTO task_labels(task_id, label_id) VALUES ($1, $2)",
+        id,
+        input.label_id
+    )
+    .execute(&mut *db)
+    .await
+    .map_internal_server_error("Failed to create label in database.")?;
+
+    Ok(ok("Label attached successfully."))
+}
+
+#[delete("/<id>/labels/<label_id>")]
+async fn delete_label(
+    auth_user: Auth<UserModel>,
+    mut db: Connection<BackendDb>,
+    id: Uuid,
+    label_id: Uuid,
+) {
+}
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct PatchInput {
@@ -230,6 +274,11 @@ pub struct GetModel {
     pub label_ids: Vec<Uuid>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LabelPostInput {
+    pub label_id: Uuid,
+}
+
 #[derive(Debug)]
 struct GetModelBuilder {
     pub get_model: GetModel,
@@ -247,5 +296,16 @@ impl GetModelBuilder {
 }
 
 pub fn mount_rocket(rocket: Rocket<Build>) -> Rocket<Build> {
-    rocket.mount("/tasks", routes![get_single, get_all, post, patch, delete])
+    rocket.mount(
+        "/tasks",
+        routes![
+            get_single,
+            get_all,
+            post,
+            patch,
+            delete,
+            post_label,
+            delete_label
+        ],
+    )
 }
