@@ -185,8 +185,15 @@ macro_rules! print_sql {
     };
 }
 
+/// Macro that generates a SQL update query
+///
+/// Supports both a single update and batch updating
 #[macro_export]
-macro_rules! post_query {
+macro_rules! insert_query {
+    // Single update
+    ($table:expr; $($name:ident: $value:expr),*) => {
+        crate::insert_query!($table; $($name: $value),*; "")
+    };
     ($table:expr; $($name:ident: $value:expr),*; $additional_sql:expr) => {
         {
             let mut names = Vec::<&str>::new();
@@ -213,13 +220,54 @@ macro_rules! post_query {
 
             format!("INSERT INTO {} ({}) VALUES ({}) {}", $table, names.join(", "), values.join(", "), $additional_sql)
         }
+    };
+
+    // Batch updating
+    ($table:expr; ($($name:ident: $index:tt),*); $value_tuples:expr) => {
+        crate::insert_query! ($table; ($($name: $index),*); $value_tuples; "")
+    };
+    ($table:expr; ($($name:ident: $index:tt),*); $value_tuples:expr; $additional_sql:expr) => {
+        {
+            let names = vec![$(stringify!($name)),*];
+            let mut values = Vec::<String>::new();
+
+            for value_tuple in $value_tuples {
+
+                let value_columns = Vec::<String>::new();
+                $(
+                    let column = value_tuple.$index;
+                    let use_column = spez::spez! {
+                        for x = &column;
+                        match<T> &Option<T> -> bool {
+                            match x {
+                                Some(_) => true,
+                                None => false
+                            }
+                        }
+                        match<T> &T -> bool {
+                            true
+                        }
+                    };
+                    if use_column {
+                        value_columns.push(crate::print_sql!(column));
+                    } else {
+                        value_columns.push(String::from("default"));
+                    }
+                )*
+
+                values.push(format!("({})", value_columns.join(", ")));
+            }
+
+            format!("INSERT INTO {} ({}) VALUES {} {}", $table, names.join(", "), values.join(", "), $additional_sql)
+        }
     }
 }
 
+/// Macro that generates a SQL update query
 #[macro_export]
-macro_rules! update_set {
+macro_rules! update_query {
     ($table:expr; $($name:ident: $value:expr),*) => {
-        update_set!($table, $($name, $value),*; "")
+        crate::update_query!($table, $($name, $value),*; "")
     };
     ($table:expr; $($name:ident: $value:expr),*; $additional_sql:expr) => {
         {

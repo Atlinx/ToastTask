@@ -115,7 +115,7 @@ macro_rules! api_post {
         async fn post(
             auth_user: crate::guards::auth::Auth<crate::models::user::UserModel>,
             mut db: rocket_db_pools::Connection<crate::database::BackendDb>,
-            input: rocket::serde::json::Json<$input>,
+            input: rocket_validation::Validated<rocket::serde::json::Json<$input>>,
         ) -> crate::responses::APIResult {
             use rocket::http::Status;
             use sqlx::Row;
@@ -126,18 +126,20 @@ macro_rules! api_post {
                 api::utils::PostResponse,
             };
 
-            let input = input.0;
+
+            let input = input.into_deep_inner();
+            println!("posting on {} with {:#?}", $model_table, input);
             let created: PgRow;
             let query = {
                 if $user_id {
-                    crate::post_query!(
+                    crate::insert_query!(
                         $model_table;
                         user_id: auth_user.id,
                         $($input_field: input.$input_field),+;
                         "RETURNING id"
                     )
                 } else {
-                    crate::post_query!(
+                    crate::insert_query!(
                         $model_table;
                         $($input_field: input.$input_field),+;
                         "RETURNING id"
@@ -147,6 +149,10 @@ macro_rules! api_post {
             created = sqlx::query(&query)
                 .fetch_one(&mut *db)
                 .await
+                .map_err(|e| {
+                    println!("got post err {}", e);
+                    ()
+                })
                 .map_internal_server_error("Failed to create in database.")?;
             let resp = PostResponse { id: created.get("id") };
             Ok(APIResponse::new(
@@ -187,8 +193,8 @@ macro_rules! api_patch {
         ) -> crate::responses::APIResult {
             use crate::responses::{bad_request, internal_server_error, result_not_found, ok, result_bad_request};
 
-            let input = input.0;
-            let update_str = crate::update_set! {
+            let input = input.into_deep_inner();
+            let update_str = crate::update_query! {
                 $model_table;
                 $($name: input.$name),+;
                 $query_where

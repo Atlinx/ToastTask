@@ -1,24 +1,3 @@
-crate::api_patch! {
-    model_table: "tasks",
-    input: PatchInput,
-    input_fields: { parent_id, list_id, due_at, due_text, completed, title, description },
-    query_where: "WHERE id = $1 AND list_id IN (SELECT id FROM lists WHERE user_id = $2)"
-    // Only let the user patch tasks they own.
-}
-
-crate::api_post! {
-    model_table: "tasks",
-    input: PostInput,
-    input_fields: { parent_id, list_id, due_at, due_text, completed, title, description },
-    user_id: false
-}
-
-crate::api_delete! {
-    model_table: "tasks",
-    query_where: "WHERE id = $1 AND list_id IN (SELECT id FROM lists WHERE user_id = $2)"
-    // Only let the user delete tasks they own.
-}
-
 use once_cell::sync::Lazy;
 use rocket::{http::Status, serde::json::Json, Build, Rocket};
 use rocket_db_pools::Connection;
@@ -181,7 +160,27 @@ async fn get_single(
     ))
 }
 
-// TODO NOW: Add this
+crate::api_patch! {
+    model_table: "tasks",
+    input: PatchInput,
+    input_fields: { parent_id, list_id, due_at, due_text, completed, title, description },
+    query_where: "WHERE id = $1 AND list_id IN (SELECT id FROM lists WHERE user_id = $2)"
+    // Only let the user patch tasks they own.
+}
+
+crate::api_post! {
+    model_table: "tasks",
+    input: PostInput,
+    input_fields: { parent_id, list_id, due_at, due_text, completed, title, description },
+    user_id: false
+}
+
+crate::api_delete! {
+    model_table: "tasks",
+    query_where: "WHERE id = $1 AND list_id IN (SELECT id FROM lists WHERE user_id = $2)"
+    // Only let the user delete tasks they own.
+}
+
 #[post("/<id>/labels", data = "<input>", format = "application/json")]
 async fn post_label(
     auth_user: Auth<UserModel>,
@@ -193,7 +192,7 @@ async fn post_label(
         "SELECT tasks.id, lists.user_id FROM tasks 
             INNER JOIN lists ON tasks.list_id = lists.id
             WHERE tasks.id = $1 AND lists.user_id = $2
-    ",
+        ",
         id,
         auth_user.id
     )
@@ -208,11 +207,11 @@ async fn post_label(
     sqlx::query!(
         "INSERT INTO task_labels(task_id, label_id) VALUES ($1, $2)",
         id,
-        input.label_id
+        input.id
     )
     .execute(&mut *db)
     .await
-    .map_internal_server_error("Failed to create label in database.")?;
+    .map_internal_server_error("Failed to attach label in database.")?;
 
     Ok(ok("Label attached successfully."))
 }
@@ -223,7 +222,21 @@ async fn delete_label(
     mut db: Connection<BackendDb>,
     id: Uuid,
     label_id: Uuid,
-) {
+) -> APIResult {
+    sqlx::query!(
+        "DELETE FROM task_labels 
+            WHERE label_id = $1 AND 
+                task_id = $2 AND
+                label_id IN (SELECT id FROM labels WHERE user_id = $3)",
+        label_id,
+        id,
+        auth_user.id
+    )
+    .execute(&mut *db)
+    .await
+    .map_internal_server_error("Failed to detach label in database.")?;
+
+    Ok(ok("Label detached successfully."))
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -242,6 +255,8 @@ pub struct PatchInput {
     pub title: Patch<String>,
     #[serde(default)]
     pub description: Patch<String>,
+    #[serde(default)]
+    pub label_ids: Patch<Vec<Uuid>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -276,7 +291,7 @@ pub struct GetModel {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LabelPostInput {
-    pub label_id: Uuid,
+    pub id: Uuid,
 }
 
 #[derive(Debug)]

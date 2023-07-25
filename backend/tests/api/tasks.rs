@@ -218,7 +218,6 @@ pub mod types {
 }
 
 pub mod lists {
-    use reqwest::StatusCode;
     use serde_json::json;
 
     use super::utils::DEFAULT_TASKS_TEMPLATES;
@@ -227,7 +226,10 @@ pub mod lists {
             auth::email::utils::email_register_and_login_user_default,
             lists::utils::setup_lists_default,
         },
-        commons,
+        commons::{
+            self,
+            http_client::{APIClient, APIRequestBuilder},
+        },
     };
 
     #[rocket::async_test]
@@ -247,15 +249,18 @@ pub mod lists {
         utils::assert_has_list(&client, &session_response, task_id, list_ids[0]).await;
 
         // Move task to different list
-        let res = client
-            .patch(&format!("tasks/{}", task_id))
-            .json(&json!({
-                "list_id": list_ids[1]
-            }))
-            .send()
-            .await
-            .expect("Expected a response");
-        assert_eq!(res.status(), StatusCode::OK);
+        client
+            .api()
+            .path("tasks")
+            .auth(&session_response)
+            .patch(
+                task_id,
+                json!({
+                    "list_id": list_ids[1]
+                }),
+            )
+            .await;
+
         utils::assert_has_list(&client, &session_response, task_id, list_ids[1]).await;
     }
 
@@ -323,30 +328,22 @@ pub mod labels {
         let client = commons::setup().await;
         let (session_response, _) = email_register_and_login_user_default(&client).await;
 
-        println!("change_labels");
-        println!("  1");
         let (task_ids, _) = setup_tasks_default(&client, &session_response).await;
         let (label_ids, _) = setup_labels_default(&client, &session_response).await;
 
-        println!("  2");
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
-        println!("  3");
         utils::add_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::add_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
-        println!("  4");
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[2]).await;
 
-        println!("  5");
         utils::delete_label(&client, &session_response, task_ids[0], label_ids[1]).await;
 
-        println!("  6");
         utils::assert_missing_label(&client, &session_response, task_ids[0], label_ids[1]).await;
         utils::assert_has_label(&client, &session_response, task_ids[0], label_ids[2]).await;
-        println!("  7");
     }
 
     #[rocket::async_test]
@@ -368,16 +365,18 @@ pub mod labels {
             "Expected child_ids to have no labels"
         );
 
-        utils::add_label(&client, &session_response, task_ids[0], label_ids[1]).await;
+        utils::add_label(&client, &session_response, task_ids[0], label_ids[0]).await;
+        utils::add_label(&client, &session_response, task_ids[0], label_ids[2]).await;
         utils::add_label(&client, &session_response, task_ids[0], label_ids[3]).await;
-        utils::add_label(&client, &session_response, task_ids[0], label_ids[4]).await;
 
-        let item = get_item(&client, &session_response, task_ids[0]).await;
+        let item = client
+            .api()
+            .path("tasks")
+            .auth(&session_response)
+            .get::<GetTaskResponse>(task_ids[0])
+            .await;
         assert!(
-            utils::set_eq(
-                &item.child_ids,
-                &vec![task_ids[0], task_ids[3], task_ids[4]]
-            ),
+            utils::set_eq(&item.label_ids, &[label_ids[0], label_ids[2], label_ids[3]]),
             "Expected child_ids to have correct labels"
         );
     }

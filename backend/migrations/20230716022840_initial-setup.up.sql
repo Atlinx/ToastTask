@@ -91,8 +91,8 @@ CREATE TABLE labels (
 CREATE INDEX label_user_idx ON labels(user_id);
 
 CREATE TABLE task_labels (
-  task_id UUID NOT NULL REFERENCES tasks,
-  label_id UUID NOT NULL REFERENCES labels,
+  task_id UUID NOT NULL REFERENCES tasks ON DELETE CASCADE,
+  label_id UUID NOT NULL REFERENCES labels ON DELETE CASCADE,
   PRIMARY KEY (task_id, label_id)
 );
 CREATE INDEX task_label_idx ON task_labels(label_id);

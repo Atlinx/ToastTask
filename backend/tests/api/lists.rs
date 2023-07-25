@@ -76,6 +76,12 @@ crate::test_crud! {
                     "description": "This is an updated list",
                     "color": "#3849dfa"
                 })
+            },
+            invalid_2(_client, _session_response, StatusCode::BAD_REQUEST) {
+                json!({
+                    "title": "Important",
+                    "color": "sdfsdf",
+                })
             }
         }
     },
