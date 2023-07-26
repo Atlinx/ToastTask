@@ -65,6 +65,7 @@ macro_rules! api_get {
             mut db: rocket_db_pools::Connection<crate::database::BackendDb>,
             id: uuid::Uuid,
         ) -> crate::responses::APIResult {
+            use once_cell::sync::Lazy;
             use rocket::http::Status;
             use sqlx::Error::RowNotFound;
             use $model as ItemModel;
@@ -128,7 +129,6 @@ macro_rules! api_post {
 
 
             let input = input.into_deep_inner();
-            println!("posting on {} with {:#?}", $model_table, input);
             let created: PgRow;
             let query = {
                 if $user_id {
@@ -241,6 +241,7 @@ macro_rules! api_delete {
             id: uuid::Uuid,
         ) -> crate::responses::APIResult {
             use crate::responses::{ok, result_not_found, MapAPIResponse};
+            use once_cell::sync::Lazy;
 
             static QUERY_STRING: Lazy<String> =
                 Lazy::new(|| format!("DELETE FROM {} {}", $model_table, $query_where));

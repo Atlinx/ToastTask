@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+pub mod sessions;
+
 pub mod get {
     use assert_json_diff::assert_json_include;
     use reqwest::StatusCode;
@@ -142,8 +144,6 @@ pub mod types {
     use time::PrimitiveDateTime;
     use uuid::Uuid;
 
-    use crate::api::sessions::types::GetSessionResponse;
-
     #[derive(Debug, Serialize, Deserialize)]
     pub struct GetUserResponse {
         id: Uuid,
@@ -152,7 +152,7 @@ pub mod types {
         updated_at: PrimitiveDateTime,
         discord_login: Option<GetDiscordUserLoginResponse>,
         email_login: Option<GetEmailUserLoginResponse>,
-        sessions: Vec<GetSessionResponse>,
+        // TODO LATER: Add dedicated endpoint for changing email and discord logins.
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -177,7 +177,7 @@ pub mod utils {
     use crate::{
         api::{
             auth::email::utils::{email_register_and_login_user, SessionResponse},
-            sessions::utils::setup_sessions,
+            users::sessions::utils::setup_sessions,
         },
         commons::http_client::HttpClient,
     };

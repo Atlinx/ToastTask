@@ -1,13 +1,13 @@
 #![cfg(test)]
 
 crate::test_get! {
-  model_path: "sessions",
+  model_path: "users/me/sessions",
   response_type: types::GetSessionResponse,
   rud_setup: utils::rud_setup
 }
 
 crate::test_delete! {
-    model_path: "sessions",
+    model_path: "users/me/sessions",
     rud_setup: utils::rud_setup
 }
 
@@ -25,7 +25,6 @@ pub mod types {
         pub user_agent: String,
         pub created_at: PrimitiveDateTime,
         pub expire_at: PrimitiveDateTime,
-        pub user_id: Uuid,
     }
 }
 
